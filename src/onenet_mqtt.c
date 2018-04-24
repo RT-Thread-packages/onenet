@@ -1,10 +1,24 @@
 /*
  * File      : onenet_mqtt.c
- * COPYRIGHT (C) 2012-2018, Shanghai Real-Thread Technology Co., Ltd
+ * COPYRIGHT (C) 2006 - 2018, RT-Thread Development Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Change Logs:
  * Date           Author       Notes
- * 2018-04-20    chenyong     the first version
+ * 2018-04-24     chenyong     first version
  */
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +51,7 @@ static void mqtt_offline_callback(MQTTClient *c)
     log_d("Enter mqtt_offline_callback!");
 }
 
-static rt_err_t onenet_mqtt_init(void)
+static rt_err_t onenet_mqtt_entry(void)
 {
     MQTTPacket_connectData condata = MQTTPacket_connectData_initializer;
 
@@ -70,7 +84,6 @@ static rt_err_t onenet_mqtt_init(void)
     mq_client.defaultMessageHandler = mqtt_callback;
 
     paho_mqtt_start(&mq_client);
-    log_i("OneNET MQTT is startup!");
     
     return RT_EOK;
 }
@@ -84,7 +97,7 @@ static void onenet_get_info(void)
     strncpy(onenet_info.server_uri, ONENET_SERVER_URL, strlen(ONENET_SERVER_URL));  
 } 
 
-int onenet_init(void)
+int onenet_mqtt_init(void)
 {
     int result = 0;
     
@@ -95,7 +108,7 @@ int onenet_init(void)
     
     onenet_get_info();
     
-    if(onenet_mqtt_init() < 0)
+    if(onenet_mqtt_entry() < 0)
     {
         result = -1;
     }
@@ -103,11 +116,11 @@ int onenet_init(void)
     if(!result)
     {
         init_ok = RT_TRUE;
-        log_i("OneNET cloud(V%s) initialize success.", ONENET_SW_VERSION);
+        log_i("OneNET MQTT initialize success.");
     }
     else
     {
-        log_e("OneNET cloud(V%s) initialize failed(%d).", ONENET_SW_VERSION, result);
+        log_e("OneNET MQTT initialize failed(%d).", result);
     }
 
     return result;
@@ -129,6 +142,9 @@ int onenet_mqtt_publish(const char *topic, const char *msg_str)
     return 0;
 }
 
+#ifdef FINSH_USING_MSH
+#include <finsh.h>
+
 int onenet_publish(int argc, char **argv)
 {
     if (argc != 3)
@@ -141,10 +157,7 @@ int onenet_publish(int argc, char **argv)
 
     return 0;
 }
-
-#ifdef FINSH_USING_MSH
-#include <finsh.h>
-MSH_CMD_EXPORT(onenet_init, OneNET cloud mqtt initializate);
-MSH_CMD_EXPORT(onenet_publish, OneNET cloud send data to subscribe topic);
+MSH_CMD_EXPORT(onenet_mqtt_init, OneNET cloud mqtt initializate);
+MSH_CMD_EXPORT_ALIAS(onenet_publish, onenet_mqtt_publish, OneNET cloud send data to subscribe topic);
 #endif
 

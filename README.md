@@ -72,9 +72,9 @@ int onenet_port_data_process(char *recv_data, rt_size_t size)
 
 ### 4.2. 运行示例
 
-该示例用于设备连接 OneNET 云端后，需要`联网成功`之后 msh 中执行 `onenet_send_data_cycle` 命令，可5秒一次循环发送数据流名为 `temperature` 的随机数据到 OneNET 云端，云端建立[数据流模板](https://open.iot.10086.cn/doc/art402.html#97)后即可实时查看上传数据信息。具体过程如下：
+该示例用于设备连接 OneNET 云端后，需要`联网成功`之后 msh 中执行 `onenet_mqtt_init` 初始化MQTT协议设备上线，然后执行 `onenet_upload_cycle` 命令，可5秒一次循环发送数据流名为 `temperature` 的随机数据到 OneNET 云端，云端建立[数据流模板](https://open.iot.10086.cn/doc/art402.html#97)后即可实时查看上传数据信息。具体过程如下：
 
-    msh />onenet_send_data_cycle
+    msh />onenet_mqtt_init
     Enter mqtt_connect_callback!
     [MQTT] ipv4 address port: 6002
     [MQTT] HOST = '183.230.40.39'
@@ -82,6 +82,8 @@ int onenet_port_data_process(char *recv_data, rt_size_t size)
     OneNET cloud(V0.1.0) initialize success.
     [MQTT] Subscribe #0 /test_topic OK!
     Enter mqtt_online_callback!             //初始化完成，设备上线成功
+    msh />
+    msh />onenet_upload_cycle
     buffer : {"temperature":8}
     buffer : {"temperature":56}
     buffer : {"temperature":19}             
