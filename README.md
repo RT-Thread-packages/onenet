@@ -78,8 +78,7 @@ int onenet_port_data_process(char *recv_data, rt_size_t size)
     Enter mqtt_connect_callback!
     [MQTT] ipv4 address port: 6002
     [MQTT] HOST = '183.230.40.39'
-    OneNET MQTT is startup!
-    OneNET cloud(V0.1.0) initialize success.
+    OneNET MQTT initialize success..
     [MQTT] Subscribe #0 /test_topic OK!
     Enter mqtt_online_callback!             //初始化完成，设备上线成功
     msh />
