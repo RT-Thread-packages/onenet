@@ -19,7 +19,7 @@ struct rt_onenet_info onenet_info;
 
 static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
 {
-	onenet_port_data_process((char *)msg_data->message->payload, msg_data->message->payloadlen);
+    onenet_port_data_process((char *)msg_data->message->payload, msg_data->message->payloadlen);
 }
 
 static void mqtt_connect_callback(MQTTClient *c)
@@ -77,7 +77,7 @@ static rt_err_t onenet_mqtt_init(void)
 
 static void onenet_get_info(void)
 {
-	strncpy(onenet_info.device_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
+    strncpy(onenet_info.device_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
     strncpy(onenet_info.api_key, ONENET_INFO_APIKEY, strlen(ONENET_INFO_APIKEY));
     strncpy(onenet_info.pro_id, ONENET_INFO_PROID, strlen(ONENET_INFO_PROID));
     strncpy(onenet_info.auth_info, ONENET_INFO_AUTH, strlen(ONENET_INFO_AUTH));
