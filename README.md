@@ -91,7 +91,7 @@ int onenet_port_data_process(char *recv_data, rt_size_t size)
 
 ## 5. 注意事项
 
-- 在 menuconfig 选项中选择 OneNET package 的 `latest` 版本，目前处于 `beta` 测试阶段；
+- OneNET package 目前处于 `beta` 测试阶段, 推荐在 menuconfig 选项中选择 `latest` 版本；
 - 在 menuconfig 选项中配置的 `device id`、`api key`、`product id`、`auth info` 等信息时需要和 OneNET 云端新建产品和新建设备时获取的信息一致；
 - 初始化 OneNET package 之前需要设备`联网成功`；
 
