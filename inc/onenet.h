@@ -134,7 +134,7 @@ int onenet_mqtt_init(void);
 int onenet_mqtt_publish(const char *topic, const char *msg_str);
 
 /* Device send data to OneNET cloud. */
-rt_err_t onenet_http_upload_digit(const char *name, int digit);
+rt_err_t onenet_http_upload_digit(const char *name, double digit);
 rt_err_t onenet_http_upload_string(const char *name, char *str);
 
 /* ========================== User port function ============================ */

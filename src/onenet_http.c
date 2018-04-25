@@ -141,7 +141,7 @@ static rt_err_t onenet_get_string_data(const char *name, char *str, char *out_bu
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char * msg_str = RT_NULL;
+    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
@@ -176,11 +176,11 @@ __exit:
     return result;
 }
 
-static rt_err_t onenet_get_digit_data(const char *name, int digit, char *out_buff)
+static rt_err_t onenet_get_digit_data(const char *name, double digit, char *out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char * msg_str = RT_NULL;
+    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
@@ -215,7 +215,7 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_http_upload_digit(const char *name, int digit)
+rt_err_t onenet_http_upload_digit(const char *name, double digit)
 {
     char *send_buffer = RT_NULL;
     rt_err_t result = RT_EOK;
@@ -260,7 +260,7 @@ rt_err_t onenet_http_upload_string(const char *name, char *str)
     assert(name);
     assert(str);
 
-    send_buffer = RT_ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
+    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
         log_e("ONENET HTTP upload digit failed! No memory for send buffer!");

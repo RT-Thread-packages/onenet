@@ -2,7 +2,7 @@
 
 ## 1. 介绍
 
-[OneNET](https://open.iot.10086.cn/) 平台是一个基于物联网产业打造的生态平台，可以适配多种网络环境和协议类型，例如MQTT、HTTP、LWM2M等，方便用户数据的管理和设备控制。
+[OneNET](https://open.iot.10086.cn/) 平台是中国移动基于物联网产业打造的生态平台，可以适配多种网络环境和协议类型，例如MQTT、HTTP、LWM2M等，方便用户数据的管理和设备控制。
 
 该组件包是 RT-Thread 系统针对 OneNET 平台连接的适配，通过这个组件包可以让设备在 RT-Thread 上使用 MQTT 协议连接 OneNet 平台，完成数据的接受和发送、以及设备的控制等功能，更多 OneNET 平台信息可查看 [OneNET 文档中心](https://open.iot.10086.cn/doc)。
 
@@ -13,8 +13,7 @@
 | inc | 头文件目录 |
 | src | 源文件目录 |
 | samples | 例程文件目录 |
-| port | 用户移植代码目录 |
-| LICENSE |  OneNET package 许可证 |
+| ports | 用户移植代码目录 |
 
 ### 1.2 许可证
 
@@ -56,7 +55,7 @@ OneNET package  遵循 GUN GPL 许可，详见 `LICENSE` 文件。
 
 ## 3. 移植
 
-### 3.1 MQTT 接受数据处理函数实现
+### 3.1 MQTT 接收数据处理函数实现
 ```
 int onenet_port_data_process(char *recv_data, rt_size_t size)
 ```
@@ -92,7 +91,7 @@ int onenet_port_data_process(char *recv_data, rt_size_t size)
 
 ## 5. 注意事项
 
-- 在 menuconfig 选项中选择 OneNET package 的 `latest` 版本；
+- 在 menuconfig 选项中选择 OneNET package 的 `latest` 版本，目前处于 `beta` 测试阶段；
 - 在 menuconfig 选项中配置的 `device id`、`api key`、`product id`、`auth info` 等信息时需要和 OneNET 云端新建产品和新建设备时获取的信息一致；
 - 初始化 OneNET package 之前需要设备`联网成功`；
 
