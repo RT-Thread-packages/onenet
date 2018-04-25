@@ -1,7 +1,7 @@
 from building import *
 
 cwd = GetCurrentDir()
-src = Glob('src/onenet_send_data.c')
+src = Glob('src/onenet_http.c')
 
 if GetDepend(['PKG_USING_ONENET_SAMPLE']):
     src += Glob('samples/*.c')
