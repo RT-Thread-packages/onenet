@@ -1,10 +1,24 @@
 /*
- * File      : rt_onenet_send_data.c
- * COPYRIGHT (C) 2012-2018, Shanghai Real-Thread Technology Co., Ltd
+ * File      : onenet_http.c
+ * COPYRIGHT (C) 2006 - 2018, RT-Thread Development Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Change Logs:
  * Date           Author       Notes
- * 2018-04-23   chenyong     the first version
+ * 2018-04-24     chenyong     first version
  */
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +32,7 @@
 #define ONENET_HEAD_DATA_LEN           256
 #define ONENET_CON_URI_LEN             256
  
- static rt_err_t onenet_send_data(char *send_buffer)
+ static rt_err_t onenet_upload_data(char *send_buffer)
 {
     struct webclient_session* session = NULL;
     char *header = RT_NULL, *header_ptr;
@@ -127,7 +141,7 @@ static rt_err_t onenet_get_string_data(const char *name, char *str, char *out_bu
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char * msg_str = RT_NULL;
+    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
@@ -162,11 +176,11 @@ __exit:
     return result;
 }
 
-static rt_err_t onenet_get_digit_data(const char *name, int digit, char *out_buff)
+static rt_err_t onenet_get_digit_data(const char *name, double digit, char *out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char * msg_str = RT_NULL;
+    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
@@ -201,15 +215,17 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_send_digit(const char *name, int digit)
+rt_err_t onenet_http_upload_digit(const char *name, double digit)
 {
     char *send_buffer = RT_NULL;
     rt_err_t result = RT_EOK;
 
+    assert(name);
+
     send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
-        log_e("RT ONENET send digit failed! No memory for send buffer!");
+        log_e("ONENET HTTP upload digit failed! No memory for send buffer!");
         return -RT_ENOMEM;
     }
 
@@ -221,7 +237,7 @@ rt_err_t onenet_send_digit(const char *name, int digit)
     }
 
     /* send data to cloud by HTTP */
-    result = onenet_send_data(send_buffer);
+    result = onenet_upload_data(send_buffer);
     if (result < 0)
     {
         goto __exit;
@@ -236,15 +252,18 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_send_string(const char *name, char *str)
+rt_err_t onenet_http_upload_string(const char *name, char *str)
 {
     char *send_buffer = RT_NULL;
     rt_err_t result = RT_EOK;
 
-    send_buffer = RT_ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
+    assert(name);
+    assert(str);
+
+    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
-        log_e("RT ONENET send digit failed! No memory for send buffer!");
+        log_e("ONENET HTTP upload digit failed! No memory for send buffer!");
         return -RT_ENOMEM;
     }
 
@@ -256,7 +275,7 @@ rt_err_t onenet_send_string(const char *name, char *str)
     }
 
     /* send data to cloud by HTTP */
-    result = onenet_send_data(send_buffer);
+    result = onenet_upload_data(send_buffer);
     if (result < 0)
     {
         goto __exit;
