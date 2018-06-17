@@ -41,17 +41,6 @@
 #define ONENET_FREE                    rt_free
 #endif
 
-#if ONENET_DEBUG
-#ifdef assert
-#undef assert
-#endif
-#define assert(EXPR)                                                           \
-if (!(EXPR))                                                                   \
-{                                                                              \
-    rt_kprintf("(%s) has assert failed at %s.\n", #EXPR, __FUNCTION__);        \
-    while (1);                                                                 \
-}
-
 /* error level log */
 #ifdef  log_e
 #undef  log_e
@@ -63,6 +52,17 @@ if (!(EXPR))                                                                   \
 #undef  log_i
 #endif
 #define log_i(...)                     rt_kprintf("\033[36;22m[I/ONENET] ");                                rt_kprintf(__VA_ARGS__);rt_kprintf("\033[0m\n")
+
+#if ONENET_DEBUG
+#ifdef assert
+#undef assert
+#endif
+#define assert(EXPR)                                                           \
+if (!(EXPR))                                                                   \
+{                                                                              \
+    rt_kprintf("(%s) has assert failed at %s.\n", #EXPR, __FUNCTION__);        \
+    while (1);                                                                 \
+}
 
 /* debug level log */
 #ifdef  log_d
@@ -76,18 +76,6 @@ if (!(EXPR))                                                                   \
 #undef assert
 #endif
 #define assert(EXPR)                   ((void)0);
-
-/* error level log */
-#ifdef  log_e
-#undef  log_e
-#endif
-#define log_e(...)
-
-/* info level log */
-#ifdef  log_i
-#undef  log_i
-#endif
-#define log_i(...)
 
 /* debug level log */
 #ifdef  log_d

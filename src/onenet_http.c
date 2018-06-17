@@ -31,8 +31,8 @@
 #define ONENET_SEND_DATA_LEN           1024
 #define ONENET_HEAD_DATA_LEN           256
 #define ONENET_CON_URI_LEN             256
- 
- static rt_err_t onenet_upload_data(char *send_buffer)
+
+static rt_err_t onenet_upload_data(char *send_buffer)
 {
     struct webclient_session* session = NULL;
     char *header = RT_NULL, *header_ptr;

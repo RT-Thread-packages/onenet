@@ -37,10 +37,11 @@ static void onenet_upload_entry(void *parameter)
 
         if (onenet_http_upload_digit("temperature", value) < 0)
         {
+            log_e("upload has an error, stop uploading");
             break;
         }
 
-        rt_thread_delay(5 * 1000);
+        rt_thread_delay(rt_tick_from_millisecond(5 * 1000));
     }
 }
 
