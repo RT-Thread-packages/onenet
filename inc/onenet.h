@@ -88,19 +88,14 @@ if (!(EXPR))                                                                   \
 #define ONENET_MQTT_SUBTOPIC           "/topic_test"
 #endif
 
-#if !defined(ONENET_INFO_DEVID) || !defined(ONENET_INFO_APIKEY) || !defined(ONENET_INFO_PROID) || !defined(ONENET_INFO_AUTH)
-#define ONENET_INFO_DEVID              "29573339"
-#define ONENET_INFO_APIKEY             "a2gVVf1hggZfuATkNogulHK1V=s="
-#define ONENET_INFO_PROID              "131494"
-#define ONENET_INFO_AUTH               "EF4016D6658466CA3E3606"
-#endif 
-
 #define ONENET_SERVER_URL              "tcp://183.230.40.39:6002"
 #define ONENET_INFO_DEVID_LEN          16
 #define ONENET_INFO_APIKEY_LEN         32
 #define ONENET_INFO_PROID_LEN          16
 #define ONENET_INFO_AUTH_LEN           64
 #define ONENET_INFO_URL_LEN            32
+
+#define ONENET_DATASTREAM_NAME_MAX     32
 
 struct rt_onenet_info
 {
@@ -115,19 +110,55 @@ struct rt_onenet_info
 };
 typedef struct rt_onenet_info *rt_onenet_info_t;
 
+/* onenet datastream info */
+struct rt_onenet_ds_info
+{
+    char id[ONENET_DATASTREAM_NAME_MAX];
+    char tags[ONENET_DATASTREAM_NAME_MAX];
+
+    char update_time[ONENET_DATASTREAM_NAME_MAX];
+    char create_time[ONENET_DATASTREAM_NAME_MAX];
+
+    char unit[ONENET_DATASTREAM_NAME_MAX];
+    char unit_symbol[ONENET_DATASTREAM_NAME_MAX];
+
+    char current_value[ONENET_DATASTREAM_NAME_MAX];
+
+};
+typedef struct rt_onenet_ds_info *rt_onenet_ds_info_t;
+
 /* OneNET MQTT initialize. */
 int onenet_mqtt_init(void);
 
 /* Publish MQTT data to subscribe topic. */
-int onenet_mqtt_publish(const char *topic, const char *msg_str);
+rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, int len);
+/* Publish MQTT binary data to onenet. */
+rt_err_t onenet_mqtt_upload_bin(const char *ds_name, const char *bin_path);
+/* Publish MQTT string data to onenet. */
+rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str);
+/* Publish MQTT digit data to onenet. */
+rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit);
 
 /* Device send data to OneNET cloud. */
-rt_err_t onenet_http_upload_digit(const char *name, double digit);
-rt_err_t onenet_http_upload_string(const char *name, char *str);
+rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit);
+rt_err_t onenet_http_upload_string(const char *ds_name, const char *str);
+
+/* Register a device to OneNET cloud. */
+rt_err_t onenet_http_register_device(const char *dev_name, const char *auth_info);
+/* get a datastream from OneNET cloud. */
+rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_datastream_info *datastream);
+/* get datapoints from OneNET cloud. Returned cJSON need to be free when user finished using the data. */
+cJSON *onenet_get_dp_by_limit(char *ds_name, int limit);
+cJSON *onenet_get_dp_by_start_end(char *ds_name, int start, int end, int limit);
+cJSON *onenet_get_dp_by_start_duration(char *ds_name, int start, int duration, int limit);
+/* Set the command response callback function. User needs to malloc memory for response data. */
+rt_err_t onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, rt_size_t recv_size, uint8_t **resp_data, rt_size_t *resp_size));
 
 /* ========================== User port function ============================ */
-
-/* Get MQTT data from OneNET cloud and process data. */
-int onenet_port_data_process(char *recv_data, rt_size_t size);
-
+/* Save device info. */
+rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key);
+/* Get device info. */
+rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info);
+/* Check the device has been registered or not. */
+rt_bool_t onenet_port_is_registed(void);
 #endif /* _ONENET_H_ */
