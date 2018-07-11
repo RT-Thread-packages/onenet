@@ -31,9 +31,24 @@ static rt_bool_t init_ok = RT_FALSE;
 static MQTTClient mq_client;
 struct rt_onenet_info onenet_info;
 
+struct onenet_device
+{
+    struct rt_onenet_info *onenet_info;
+
+    void(*cmd_rsp_cb)(uint8_t *recv_data, rt_size_t recv_size, uint8_t **resp_data, rt_size_t *resp_size);
+
+} onenet_mqtt;
+
 static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
 {
-    onenet_port_data_process((char *)msg_data->message->payload, msg_data->message->payloadlen);
+    rt_size_t res_len = 0;
+    uint8_t *response_buf = RT_NULL;
+
+    if(onenet_mqtt.cmd_rsp_cb != RT_NULL)
+    {
+        onenet_mqtt.cmd_rsp_cb((uint8_t *)msg_data->message->payload, msg_data->message->payloadlen, &response_buf, &res_len);
+    }
+    
 }
 
 static void mqtt_connect_callback(MQTTClient *c)
@@ -84,55 +99,91 @@ static rt_err_t onenet_mqtt_entry(void)
     mq_client.defaultMessageHandler = mqtt_callback;
 
     paho_mqtt_start(&mq_client);
-    
+
     return RT_EOK;
 }
 
-static void onenet_get_info(void)
+static rt_err_t onenet_get_info(void)
 {
-    strncpy(onenet_info.device_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
-    strncpy(onenet_info.api_key, ONENET_INFO_APIKEY, strlen(ONENET_INFO_APIKEY));
-    strncpy(onenet_info.pro_id, ONENET_INFO_PROID, strlen(ONENET_INFO_PROID));
-    strncpy(onenet_info.auth_info, ONENET_INFO_AUTH, strlen(ONENET_INFO_AUTH));
-    strncpy(onenet_info.server_uri, ONENET_SERVER_URL, strlen(ONENET_SERVER_URL));  
-} 
+    char dev_id[ONENET_INFO_DEVICE_LEN] = { 0 };
+    char api_key[ONENET_INFO_DEVICE_LEN] = { 0 };
+    char auth_info[ONENET_INFO_DEVICE_LEN] = { 0 };
 
+    if (onenet_port_get_device_info(dev_id, api_key, auth_info))
+    {
+        log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s\n", dev_id, api_key, auth_info);
+        return -RT_ERROR;
+    }
+
+    if (strlen(api_key) < 15)
+    {
+        strncpy(api_key, ONENET_MASTER_APIKEY, strlen(ONENET_MASTER_APIKEY));
+    }
+
+    strncpy(onenet_info.device_id, dev_id, strlen(dev_id));
+    strncpy(onenet_info.api_key, api_key, strlen(api_key));
+    strncpy(onenet_info.pro_id, ONENET_INFO_PROID, strlen(ONENET_INFO_PROID));
+    strncpy(onenet_info.auth_info, auth_info, strlen(auth_info));
+    strncpy(onenet_info.server_uri, ONENET_SERVER_URL, strlen(ONENET_SERVER_URL));
+
+    return RT_EOK;
+}
+
+/**
+ * onenet mqtt client init.
+ *
+ * @param   NULL
+ *
+ * @return  0 : init success
+ *         -1 : get device info fail
+*          -2 : onenet mqtt client init fail
+ */
 int onenet_mqtt_init(void)
 {
     int result = 0;
-    
+
     if (init_ok)
     {
+        log_d("onenet mqtt already init!");
         return 0;
     }
-    
-    onenet_get_info();
-    
-    if(onenet_mqtt_entry() < 0)
+
+    if (onenet_get_info() < 0)
     {
         result = -1;
+        goto __exit;
     }
 
-    if(!result)
+    onenet_mqtt.onenet_info = &onenet_info;
+    onenet_mqtt.cmd_rsp_cb = RT_NULL;
+
+    if (onenet_mqtt_entry() < 0)
     {
+        result = -2;
+        goto __exit;
+    }
+
+__exit:
+    if (!result)
+    {
+        log_i("RT-Thread OneNET package(V%s) initialize success.", ONENET_SW_VERSION);
         init_ok = RT_TRUE;
-        log_i("OneNET MQTT initialize success.");
     }
     else
     {
-        log_e("OneNET MQTT initialize failed(%d).", result);
+        log_e("RT-Thread OneNET package(V%s) initialize failed(%d).", ONENET_SW_VERSION, result);
     }
 
     return result;
 }
 
-int onenet_mqtt_publish(const char *topic, const char *msg_str)
+rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, int len)
 {
     MQTTMessage message;
-    message.qos = 1;
+    message.qos = QOS1;
     message.retained = 0;
-    message.payload = (void*) msg_str;
-    message.payloadlen = strlen(message.payload);
+    message.payload = (void *) msg;
+    message.payloadlen = len;
 
     if (MQTTPublish(&mq_client, topic, &message) < 0)
     {
@@ -153,7 +204,7 @@ int onenet_publish(int argc, char **argv)
         return 0;
     }
 
-    onenet_mqtt_publish(argv[1], argv[2]);
+    onenet_mqtt_publish(argv[1], (uint8_t *)argv[2], strlen(argv[2]));
 
     return 0;
 }

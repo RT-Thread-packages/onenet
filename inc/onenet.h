@@ -24,6 +24,7 @@
 #define _ONENET_H_
 
 #include <rtthread.h>
+#include <cJSON.h>
 
 #define ONENET_DEBUG                   1
 
@@ -94,6 +95,7 @@ if (!(EXPR))                                                                   \
 #define ONENET_INFO_PROID_LEN          16
 #define ONENET_INFO_AUTH_LEN           64
 #define ONENET_INFO_URL_LEN            32
+#define ONENET_INFO_DEVICE_LEN         32
 
 #define ONENET_DATASTREAM_NAME_MAX     32
 
