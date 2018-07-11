@@ -22,19 +22,20 @@
  */
 #include <stdlib.h>
 #include <string.h>
- 
+
 #include <cJSON.h>
 #include <webclient.h>
- 
+
 #include <onenet.h>
 
 #define ONENET_SEND_DATA_LEN           1024
 #define ONENET_HEAD_DATA_LEN           256
 #define ONENET_CON_URI_LEN             256
+#define ONENET_RECV_RESP_LEN           256
 
 static rt_err_t onenet_upload_data(char *send_buffer)
 {
-    struct webclient_session* session = NULL;
+    struct webclient_session *session = RT_NULL;
     char *header = RT_NULL, *header_ptr;
     char *buffer = send_buffer;
     char *URI = RT_NULL;
@@ -49,7 +50,7 @@ static rt_err_t onenet_upload_data(char *send_buffer)
     }
 
     URI = ONENET_CALLOC(1, ONENET_CON_URI_LEN);
-    if (URI == NULL)
+    if (URI == RT_NULL)
     {
         log_e("OneNet Send data failed! No memory for URI buffer!");
         result = -RT_ENOMEM;
@@ -72,8 +73,8 @@ static rt_err_t onenet_upload_data(char *send_buffer)
         goto __exit;
     }
 
-    header = (char*) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
-    if (header == NULL)
+    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
+    if (header == RT_NULL)
     {
         log_e("OneNet Send data failed! No memory for header buffer!");
         result = -RT_ENOMEM;
@@ -84,19 +85,19 @@ static rt_err_t onenet_upload_data(char *send_buffer)
     /* build header for upload */
 #ifdef ONENET_USING_MQTT
     header_ptr += rt_snprintf(header_ptr,
-            WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-            "api-key: %s\r\n", onenet_info.api_key);
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", onenet_info.api_key);
 #else
     header_ptr += rt_snprintf(header_ptr,
-            WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-            "api-key: %s\r\n", ONENET_INFO_APIKEY);
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", ONENET_INFO_APIKEY);
 #endif
     header_ptr += rt_snprintf(header_ptr,
-            WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-            "Content-Length: %d\r\n", strlen(buffer));
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Length: %d\r\n", strlen(buffer));
     header_ptr += rt_snprintf(header_ptr,
-            WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-            "Content-Type: application/octet-stream\r\n");
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Type: application/octet-stream\r\n");
 
     /* send header data */
     result = webclient_send_header(session, WEBCLIENT_POST, header, header_ptr - header);
@@ -137,7 +138,7 @@ __exit:
 }
 
 
-static rt_err_t onenet_get_string_data(const char *name, char *str, char *out_buff)
+static rt_err_t onenet_get_string_data(const char *ds_name, const char *str, char *out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
@@ -150,7 +151,7 @@ static rt_err_t onenet_get_string_data(const char *name, char *str, char *out_bu
         return -RT_ENOMEM;
     }
 
-    cJSON_AddStringToObject(root, name, str);
+    cJSON_AddStringToObject(root, ds_name, str);
 
     /* render a cJSON structure to buffer */
     msg_str = cJSON_PrintUnformatted(root);
@@ -176,7 +177,7 @@ __exit:
     return result;
 }
 
-static rt_err_t onenet_get_digit_data(const char *name, double digit, char *out_buff)
+static rt_err_t onenet_get_digit_data(const char *ds_name, const double digit, char *out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
@@ -189,7 +190,7 @@ static rt_err_t onenet_get_digit_data(const char *name, double digit, char *out_
         return -RT_ENOMEM;
     }
 
-    cJSON_AddNumberToObject(root, name, digit);
+    cJSON_AddNumberToObject(root, ds_name, digit);
 
     /* render a cJSON structure to buffer */
     msg_str = cJSON_PrintUnformatted(root);
@@ -215,14 +216,23 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_http_upload_digit(const char *name, double digit)
+/**
+ * upload digit data to OneNET cloud.
+ *
+ * @param   ds_name     datastream name
+ * @param   digit       digit data
+ *
+ * @return  0 : upload data success
+ *         -5 : No memory
+ */
+rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit)
 {
     char *send_buffer = RT_NULL;
     rt_err_t result = RT_EOK;
 
-    assert(name);
+    assert(ds_name);
 
-    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
+    send_buffer = (char *)ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
         log_e("ONENET HTTP upload digit failed! No memory for send buffer!");
@@ -230,7 +240,7 @@ rt_err_t onenet_http_upload_digit(const char *name, double digit)
     }
 
     /* get JSON format data */
-    result = onenet_get_digit_data(name, digit, send_buffer);
+    result = onenet_get_digit_data(ds_name, digit, send_buffer);
     if (result < 0)
     {
         goto __exit;
@@ -252,23 +262,32 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_http_upload_string(const char *name, char *str)
+/**
+ *upload string data to OneNET cloud.
+ *
+ * @param   ds_name     datastream name
+ * @param   str         string data
+ *
+ * @return  0 : upload data success
+ *         -5 : No memory
+ */
+rt_err_t onenet_http_upload_string(const char *ds_name, const char *str)
 {
     char *send_buffer = RT_NULL;
     rt_err_t result = RT_EOK;
 
-    assert(name);
+    assert(ds_name);
     assert(str);
 
     send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
-        log_e("ONENET HTTP upload digit failed! No memory for send buffer!");
+        log_e("ONENET HTTP upload string failed! No memory for send buffer!");
         return -RT_ENOMEM;
     }
 
     /* get JSON format data */
-    result = onenet_get_string_data(name, str, send_buffer);
+    result = onenet_get_string_data(ds_name, str, send_buffer);
     if (result < 0)
     {
         goto __exit;
@@ -276,6 +295,249 @@ rt_err_t onenet_http_upload_string(const char *name, char *str)
 
     /* send data to cloud by HTTP */
     result = onenet_upload_data(send_buffer);
+    if (result < 0)
+    {
+        goto __exit;
+    }
+
+__exit:
+    if (send_buffer)
+    {
+        ONENET_FREE(send_buffer);
+    }
+
+    return result;
+}
+
+static rt_err_t response_register_handlers(const unsigned char *rec_buf, const int length)
+{
+    cJSON *root = RT_NULL;
+    cJSON *item = RT_NULL;
+    cJSON *itemid = RT_NULL;
+    cJSON *itemapikey = RT_NULL;
+
+    log_d("response is %.*s\n", length, rec_buf);
+
+    root = cJSON_Parse((char *)rec_buf);
+    if (!root)
+    {
+        log_e("onenet register device failed! cJSON Parse data error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    item = cJSON_GetObjectItem(root, "errno");
+    if (item->valueint == 0)
+    {
+        itemid = cJSON_GetObjectItem(root->child->next, "device_id");
+        itemapikey = cJSON_GetObjectItem(root->child->next, "key");
+
+        onenet_port_save_device_info(itemid->valuestring, itemapikey->valuestring);
+    }
+    else
+    {
+        log_e("onenet register device failed! errno is %d", item->valueint);
+        return -RT_ERROR;
+    }
+
+    return RT_EOK;
+
+}
+
+/* upload register device data to Onenet cloud */
+static rt_err_t onenet_upload_register_device(char *send_buffer)
+{
+    struct webclient_session *session = RT_NULL;
+    char *header = RT_NULL, *header_ptr;
+    char *buffer = send_buffer;
+    char *URI = RT_NULL;
+    int length;
+    unsigned char *rec_buf;
+    rt_err_t result = RT_EOK;
+
+    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
+    if (!session)
+    {
+        log_e("OneNet register device failed! No memory for session structure!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    URI = ONENET_CALLOC(1, ONENET_CON_URI_LEN);
+    if (URI == RT_NULL)
+    {
+        log_e("OneNet register device failed! No memory for URI buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    rec_buf = ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
+    if (rec_buf == RT_NULL)
+    {
+        log_e("OneNet register device failed! No memory for response data buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/register_de?register_code=");
+    strcat(URI, ONENET_REGISTRATION_CODE);
+
+    /* connect OneNET cloud */
+    result = webclient_connect(session, URI);
+    if (result < 0)
+    {
+        log_e("OneNet register device failed! Webclient connect URI(%s) failed!", URI);
+        goto __exit;
+    }
+
+    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
+    if (header == RT_NULL)
+    {
+        log_e("OneNet register device failed! No memory for header buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+    header_ptr = header;
+
+    extern struct rt_onenet_info onenet_info;
+
+    /* build header for upload */
+#ifdef ONENET_USING_MQTT
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", ONENET_MASTER_APIKEY);
+#else
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", ONENET_INFO_APIKEY);
+#endif
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Length: %d\r\n", strlen(buffer));
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Type: application/octet-stream\r\n");
+
+    /* send header data */
+    result = webclient_send_header(session, WEBCLIENT_POST, header, header_ptr - header);
+    if (result < 0)
+    {
+        log_e("OneNet register device failed! Send header buffer failed return %d!", result);
+        goto __exit;
+    }
+
+    /* send body data */
+    webclient_write(session, (unsigned char *) buffer, strlen(buffer));
+    log_d("buffer : %.*s", strlen(buffer), buffer);
+
+    if (webclient_handle_response(session))
+    {
+        if (session->response != 200)
+        {
+            log_e("OneNet register device failed! Handle response(%d) error!", session->response);
+            result = -RT_ERROR;
+            goto __exit;
+        }
+        else
+        {
+            length = webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN);
+            response_register_handlers(rec_buf, length);
+        }
+
+    }
+
+__exit:
+    if (session)
+    {
+        webclient_close(session);
+    }
+    if (URI)
+    {
+        ONENET_FREE(URI);
+    }
+    if (header)
+    {
+        ONENET_FREE(header);
+    }
+    if (rec_buf)
+    {
+        ONENET_FREE(rec_buf);
+    }
+    return result;
+}
+
+static rt_err_t onenet_get_register_device_data(const char *ds_name, const char *auth_info, char *out_buff)
+{
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    root = cJSON_CreateObject();
+    if (!root)
+    {
+        log_e("MQTT register device failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    cJSON_AddStringToObject(root, "sn", auth_info);
+    cJSON_AddStringToObject(root, "title", ds_name);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        log_e("Device register device failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    strncpy(out_buff, msg_str, strlen(msg_str));
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        ONENET_FREE(msg_str);
+    }
+
+    return result;
+}
+
+/**
+ *Register device to OneNET cloud.
+ *
+ * @param   name            device name
+ * @param   auth_info       authentication information
+ *
+ * @return  0 : register device success
+ *         -5 : No memory
+ */
+rt_err_t onenet_http_register_device(const char *name, const char *auth_info)
+{
+    char *send_buffer = RT_NULL;
+    rt_err_t result = RT_EOK;
+
+    assert(name);
+    assert(auth_info);
+
+    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
+    if (!send_buffer)
+    {
+        log_e("ONENET register device failed! No memory for send buffer!");
+        return -RT_ENOMEM;
+    }
+
+    /* get JSON format data */
+    result = onenet_get_register_device_data(name, auth_info, send_buffer);
+    if (result < 0)
+    {
+        goto __exit;
+    }
+
+    /* send data to cloud by HTTP */
+    result = onenet_upload_register_device(send_buffer);
     if (result < 0)
     {
         goto __exit;
