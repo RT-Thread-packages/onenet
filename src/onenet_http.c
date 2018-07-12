@@ -23,8 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <cJSON.h>
-#include "cJSON_util.h"
+#include <cJSON_util.h>
 #include <webclient.h>
 
 #include <onenet.h>
@@ -32,7 +31,10 @@
 #define ONENET_SEND_DATA_LEN           1024
 #define ONENET_HEAD_DATA_LEN           256
 #define ONENET_CON_URI_LEN             256
-#define ONENET_RECV_RESP_LEN           256
+#define ONENET_RECV_RESP_LEN           1024
+#define ONENET_TIME_BUF_LEN            24
+
+extern struct rt_onenet_info onenet_info;
 
 static rt_err_t onenet_upload_data(char *send_buffer)
 {
@@ -58,13 +60,7 @@ static rt_err_t onenet_upload_data(char *send_buffer)
         goto __exit;
     }
 
-#ifdef ONENET_USING_MQTT
-    extern struct rt_onenet_info onenet_info;
-
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datapoints?type=3", onenet_info.device_id);
-#else
-    rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datapoints?type=3", ONENET_INFO_DEVID);
-#endif
 
     /* connect OneNET cloud */
     result = webclient_connect(session, URI);
@@ -371,18 +367,11 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     }
     header_ptr = header;
 
-    extern struct rt_onenet_info onenet_info;
-
     /* build header for upload */
-#ifdef ONENET_USING_MQTT
     header_ptr += rt_snprintf(header_ptr,
                               WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
                               "api-key: %s\r\n", ONENET_MASTER_APIKEY);
-#else
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", ONENET_INFO_APIKEY);
-#endif
+
     header_ptr += rt_snprintf(header_ptr,
                               WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
                               "Content-Length: %d\r\n", strlen(buffer));
@@ -442,6 +431,7 @@ static rt_err_t onenet_get_register_device_data(const char *ds_name, const char 
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
+
     char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
@@ -523,4 +513,241 @@ __exit:
     }
 
     return result;
+}
+
+static cJSON *response_get_datapoints_handlers(const uint8_t *rec_buf)
+{
+    cJSON *root = RT_NULL;
+    cJSON *root_data = RT_NULL;
+    cJSON *itemdata = RT_NULL ;
+    cJSON *item = RT_NULL;
+
+    root = cJSON_Parse((char *) rec_buf);
+    if (!root)
+    {
+        log_e("MQTT processing response data failed! cJSON Parse data error return NULL!");
+
+        return RT_NULL;
+    }
+
+    item = cJSON_GetObjectItem(root, "errno");
+    if (item->valueint == 0)
+    {
+        itemdata = cJSON_GetObjectItem(root, "data");
+        root_data = cJSON_Duplicate(itemdata, 1);
+    }
+    else
+    {
+        log_e("get datapoints failed! errno is %d", item->valueint);
+    }
+
+    if (!root)
+    {
+        cJSON_Delete(root);
+    }
+
+    return root_data;
+
+}
+
+static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *end, int duration, size_t limit)
+{
+    struct webclient_session *session = RT_NULL;
+    char *header = RT_NULL, *header_ptr;
+    char *URI = RT_NULL;
+    unsigned char *rec_buf = RT_NULL;
+    rt_err_t result = RT_EOK;
+    cJSON * itemdata = RT_NULL;
+
+    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
+    if (!session)
+    {
+        log_e("OneNet Send data failed! No memory for session structure!");
+        return RT_NULL;
+    }
+
+    URI = (char *) ONENET_CALLOC(1, ONENET_CON_URI_LEN);
+    if (URI == RT_NULL)
+    {
+        log_e("OneNet Send data failed! No memory for URI buffer!");
+        goto __exit;
+    }
+
+    rec_buf = (unsigned char *) ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
+    if (rec_buf == RT_NULL)
+    {
+        log_e("OneNet recvice response data failed! No memory for response data buffer!");
+        goto __exit;
+    }
+
+    rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datapoints?datastream_id=%s", onenet_info.device_id, datastream);
+
+    if (start != RT_NULL)
+    {
+        strcat(URI, "&start=");
+        strcat(URI, start);
+    }
+    if (end != RT_NULL)
+    {
+        strcat(URI, "&end=");
+        strcat(URI, end);
+    }
+    if (duration != RT_NULL)
+    {
+        char number[10];
+        strcat(URI, "&duration=");
+        rt_snprintf(number, 10, "%d", duration);
+        strcat(URI, number);
+    }
+    if (limit != RT_NULL)
+    {
+        char number[10];
+        strcat(URI, "&limit=");
+        rt_snprintf(number, 10, "%d", limit);
+        strcat(URI, number);
+    }
+
+    /* connect OneNET cloud */
+    result = webclient_connect(session, URI);
+    if (result < 0)
+    {
+        log_e("OneNet Send data failed! Webclient connect URI(%s) failed!", URI);
+        goto __exit;
+    }
+
+    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
+    if (header == RT_NULL)
+    {
+        log_e("OneNet Send data failed! No memory for header buffer!");
+        goto __exit;
+    }
+    header_ptr = header;
+
+    /* build header for upload */
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", onenet_info.api_key);
+
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Type: application/octet-stream\r\n");
+
+    /* send header data */
+    result = webclient_send_header(session, WEBCLIENT_GET, header, header_ptr - header);
+    if (result < 0)
+    {
+        log_e("OneNet Send data failed! Send header buffer failed return %d!", result);
+        goto __exit;
+    }
+
+    if (webclient_handle_response(session))
+    {
+        if (session->response != 200)
+        {
+            log_e("OneNet Send data failed! Handle response(%d) error!", session->response);
+            result = -RT_ERROR;
+        }
+        else
+        {
+            if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
+            {
+                itemdata = response_get_datapoints_handlers(rec_buf);
+            }
+
+        }
+
+    }
+
+__exit:
+    if (session)
+    {
+        webclient_close(session);
+    }
+    if (URI)
+    {
+        ONENET_FREE(URI);
+    }
+    if (header)
+    {
+        ONENET_FREE(header);
+    }
+    if (rec_buf)
+    {
+        ONENET_FREE(rec_buf);
+    }
+
+    return itemdata;
+
+}
+
+/**
+ * get datapoints form onenet cloud by limit
+ *
+ * @param   ds_name     datastream name
+ * @param   limit       the number of datapoints most returned by this request
+ *
+ * @return  cjson of datapoints
+ */
+cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit)
+{
+    return onenet_http_get_datapoints(ds_name, RT_NULL, RT_NULL, RT_NULL, limit);
+}
+
+/**
+ * get datapoints form onenet cloud by start time and end time
+ *
+ * @param   ds_name     datastream name
+ * @param   start       start time
+ * @param   end         end time
+ * @param   limit       the number of datapoints most returned by this request
+ *
+ * @return  cjson of datapoints
+ */
+cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, size_t limit)
+{
+    char start_buf[ONENET_TIME_BUF_LEN] = { 0 }, end_buf[ONENET_TIME_BUF_LEN] = { 0 };
+    struct tm *cur_tm;
+
+    time_t time = (time_t) (start + 8 * 60 * 60);
+
+    cur_tm = localtime(&time);
+
+    rt_sprintf(start_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
+            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+
+    time = (time_t) (end + 8 * 60 * 60);
+
+    cur_tm = localtime(&time);
+
+    rt_sprintf(end_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
+            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+
+    return onenet_http_get_datapoints(ds_name, start_buf, end_buf, RT_NULL, limit);
+
+}
+
+/**
+ * get datapoints form onenet cloud by start time and duration
+ *
+ * @param   ds_name     datastream name
+ * @param   start       start time
+ * @param   duration    query time length
+ * @param   limit       the number of datapoints most returned by this request
+ *
+ * @return  cjson of datapoints
+ */
+cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t duration, size_t limit)
+{
+    struct tm *cur_tm;
+    char start_buf[ONENET_TIME_BUF_LEN] = { 0 };
+
+    time_t time = (time_t) (start + 8 * 60 * 60);
+
+    cur_tm = localtime(&time);
+
+    rt_sprintf(start_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
+            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+
+    return onenet_http_get_datapoints(ds_name, start_buf, RT_NULL, duration, limit);
+
 }

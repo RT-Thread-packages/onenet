@@ -158,9 +158,9 @@ rt_err_t onenet_http_register_device(const char *dev_name, const char *auth_info
 /* get a datastream from OneNET cloud. */
 rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_datastream_info *datastream);
 /* get datapoints from OneNET cloud. Returned cJSON need to be free when user finished using the data. */
-cJSON *onenet_get_dp_by_limit(char *ds_name, int limit);
-cJSON *onenet_get_dp_by_start_end(char *ds_name, int start, int end, int limit);
-cJSON *onenet_get_dp_by_start_duration(char *ds_name, int start, int duration, int limit);
+cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit);
+cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, size_t limit);
+cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t duration, size_t limit);
 /* Set the command response callback function. User needs to malloc memory for response data. */
 void onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_size, uint8_t **resp_data, size_t *resp_size));
 
