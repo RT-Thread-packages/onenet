@@ -24,11 +24,12 @@
 #define _ONENET_H_
 
 #include <rtthread.h>
+
 #include <cJSON.h>
 
 #define ONENET_DEBUG                   1
 
-#define ONENET_SW_VERSION              "0.1.0"
+#define ONENET_SW_VERSION              "0.2.0"
 
 #ifndef ONENET_MALLOC
 #define ONENET_MALLOC                  rt_malloc
@@ -133,9 +134,13 @@ typedef struct rt_onenet_ds_info *rt_onenet_ds_info_t;
 int onenet_mqtt_init(void);
 
 /* Publish MQTT data to subscribe topic. */
-rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, int len);
+rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len);
+
+#ifdef RT_USING_DFS
 /* Publish MQTT binary data to onenet. */
 rt_err_t onenet_mqtt_upload_bin(const char *ds_name, const char *bin_path);
+#endif
+
 /* Publish MQTT string data to onenet. */
 rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str);
 /* Publish MQTT digit data to onenet. */
@@ -145,8 +150,11 @@ rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit);
 rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit);
 rt_err_t onenet_http_upload_string(const char *ds_name, const char *str);
 
+#ifdef ONENET_USING_AUTO_REGISTER
 /* Register a device to OneNET cloud. */
 rt_err_t onenet_http_register_device(const char *dev_name, const char *auth_info);
+#endif
+
 /* get a datastream from OneNET cloud. */
 rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_datastream_info *datastream);
 /* get datapoints from OneNET cloud. Returned cJSON need to be free when user finished using the data. */
@@ -154,13 +162,16 @@ cJSON *onenet_get_dp_by_limit(char *ds_name, int limit);
 cJSON *onenet_get_dp_by_start_end(char *ds_name, int start, int end, int limit);
 cJSON *onenet_get_dp_by_start_duration(char *ds_name, int start, int duration, int limit);
 /* Set the command response callback function. User needs to malloc memory for response data. */
-rt_err_t onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, rt_size_t recv_size, uint8_t **resp_data, rt_size_t *resp_size));
+void onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_size, uint8_t **resp_data, size_t *resp_size));
 
 /* ========================== User port function ============================ */
+#ifdef ONENET_USING_AUTO_REGISTER
 /* Save device info. */
 rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key);
 /* Get device info. */
 rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info);
 /* Check the device has been registered or not. */
 rt_bool_t onenet_port_is_registed(void);
+#endif
+
 #endif /* _ONENET_H_ */

@@ -23,6 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cJSON_util.h"
+
 #include <paho_mqtt.h>
 
 #include <onenet.h>
@@ -35,20 +37,37 @@ struct onenet_device
 {
     struct rt_onenet_info *onenet_info;
 
-    void(*cmd_rsp_cb)(uint8_t *recv_data, rt_size_t recv_size, uint8_t **resp_data, rt_size_t *resp_size);
+    void(*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_size, uint8_t **resp_data, size_t *resp_size);
 
 } onenet_mqtt;
 
 static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
 {
-    rt_size_t res_len = 0;
+    size_t res_len = 0;
     uint8_t *response_buf = RT_NULL;
+    char topicname[45] = { "$crsp/" };
 
-    if(onenet_mqtt.cmd_rsp_cb != RT_NULL)
+    log_d("topic %.*s receive a message\n", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
+
+    log_d("message length is %d\n", msg_data->message->payloadlen);
+
+    if (onenet_mqtt.cmd_rsp_cb != RT_NULL)
     {
-        onenet_mqtt.cmd_rsp_cb((uint8_t *)msg_data->message->payload, msg_data->message->payloadlen, &response_buf, &res_len);
+        onenet_mqtt.cmd_rsp_cb((uint8_t *) msg_data->message->payload, msg_data->message->payloadlen, &response_buf,
+                &res_len);
+
+        if (response_buf != RT_NULL || res_len != 0)
+        {
+            strncat(topicname, &(msg_data->topicName->lenstring.data[6]), msg_data->topicName->lenstring.len - 6);
+
+            onenet_mqtt_publish(topicname, response_buf, strlen(response_buf));
+
+            ONENET_FREE(response_buf);
+
+        }
+
     }
-    
+
 }
 
 static void mqtt_connect_callback(MQTTClient *c)
@@ -79,8 +98,8 @@ static rt_err_t onenet_mqtt_entry(void)
     mq_client.condata.password.cstring = onenet_info.auth_info;
 
     mq_client.buf_size = mq_client.readbuf_size = 1024 * 2;
-    mq_client.buf = ONENET_CALLOC(1, mq_client.buf_size);
-    mq_client.readbuf = ONENET_CALLOC(1, mq_client.readbuf_size);
+    mq_client.buf = (unsigned char *) ONENET_CALLOC(1, mq_client.buf_size);
+    mq_client.readbuf = (unsigned char *) ONENET_CALLOC(1, mq_client.readbuf_size);
     if (!(mq_client.buf && mq_client.readbuf))
     {
         log_e("No memory for MQTT client buffer!");
@@ -136,7 +155,7 @@ static rt_err_t onenet_get_info(void)
  *
  * @return  0 : init success
  *         -1 : get device info fail
-*          -2 : onenet mqtt client init fail
+ *         -2 : onenet mqtt client init fail
  */
 int onenet_mqtt_init(void)
 {
@@ -177,7 +196,17 @@ __exit:
     return result;
 }
 
-rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, int len)
+/**
+ * mqtt publish msg to topic
+ *
+ * @param   topic   target topic
+ * @param   msg     message to be sent
+ * @param   len     message length
+ *
+ * @return  0 : publish success
+ *         -1 : publish fail
+ */
+rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
 {
     MQTTMessage message;
     message.qos = QOS1;
@@ -193,22 +222,208 @@ rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, int len)
     return 0;
 }
 
-#ifdef FINSH_USING_MSH
-#include <finsh.h>
-
-int onenet_publish(int argc, char **argv)
+static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double digit, char **out_buff, size_t *length)
 {
-    if (argc != 3)
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    root = cJSON_CreateObject();
+    if (!root)
     {
-        log_e("onenet_publish [topic] [message]    -OneNET mqtt pulish message to this topic.\n");
-        return 0;
+        log_e("MQTT publish digit data failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
     }
 
-    onenet_mqtt_publish(argv[1], (uint8_t *)argv[2], strlen(argv[2]));
+    cJSON_AddNumberToObject(root, ds_name, digit);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        log_e("MQTT publish digit data failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
+    if (!(*out_buff))
+    {
+        log_e("ONENET mqtt upload digit data failed! No memory for send buffer!");
+        return -RT_ENOMEM;
+    }
+
+    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
+    *length = strlen(&(*out_buff)[3]);
+
+    /* mqtt head and json length */
+    (*out_buff)[0] = 0x03;
+    (*out_buff)[1] = (*length & 0xff00) >> 8;
+    (*out_buff)[2] = *length & 0xff;
+    *length += 3;
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        cJSON_free(msg_str);
+    }
+
+    return result;
+}
+
+/**
+ * Upload digit data to OneNET cloud.
+ *
+ * @param   ds_name     datastream name
+ * @param   digit       digit data
+ *
+ * @return  0 : upload digit data success
+ *         -5 : no memory
+ */
+rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit)
+{
+    char *send_buffer = RT_NULL;
+    rt_err_t result = RT_EOK;
+    size_t length = 0;
+
+    assert(ds_name);
+
+    result = onenet_mqtt_get_digit_data(ds_name, digit, &send_buffer, &length);
+    if (result < 0)
+    {
+        goto __exit;
+    }
+
+    result = onenet_mqtt_publish("$dp", (uint8_t *)send_buffer, length);
+    if (result < 0)
+    {
+        log_e("onenet publish failed!\n");
+        goto __exit;
+    }
+
+__exit:
+    if (send_buffer)
+    {
+        ONENET_FREE(send_buffer);
+    }
 
     return 0;
 }
-MSH_CMD_EXPORT(onenet_mqtt_init, OneNET cloud mqtt initializate);
-MSH_CMD_EXPORT_ALIAS(onenet_publish, onenet_mqtt_publish, OneNET cloud send data to subscribe topic);
-#endif
 
+static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
+{
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    root = cJSON_CreateObject();
+    if (!root)
+    {
+        log_e("MQTT publish string data failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    cJSON_AddStringToObject(root, ds_name, str);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        log_e("MQTT publish string data failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
+    if (!(*out_buff))
+    {
+        log_e("ONENET mqtt upload string data failed! No memory for send buffer!");
+        return -RT_ENOMEM;
+    }
+
+    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
+    *length = strlen(&(*out_buff)[3]);
+
+    /* mqtt head and json length */
+    (*out_buff)[0] = 0x03;
+    (*out_buff)[1] = (*length & 0xff00) >> 8;
+    (*out_buff)[2] = *length & 0xff;
+    *length += 3;
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        cJSON_free(msg_str);
+    }
+
+    return result;
+}
+
+/**
+ * upload string data to OneNET cloud.
+ *
+ * @param   ds_name     datastream name
+ * @param   str         string data
+ *
+ * @return  0 : upload digit data success
+ *         -5 : no memory
+ */
+rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
+{
+    char *send_buffer = RT_NULL;
+    rt_err_t result = RT_EOK;
+    size_t length = 0;
+
+    assert(ds_name);
+
+    result = onenet_mqtt_get_string_data(ds_name, str, &send_buffer, &length);
+    if (result < 0)
+    {
+        goto __exit;
+    }
+
+    result = onenet_mqtt_publish("$dp", (uint8_t *)send_buffer, length);
+    if (result < 0)
+    {
+        log_e("onenet mqtt publish digit data failed!\n");
+        goto __exit;
+    }
+
+__exit:
+    if (send_buffer)
+    {
+        ONENET_FREE(send_buffer);
+    }
+
+    return 0;
+}
+
+/**
+ * set the command responses call back function
+ *
+ * @param   cmd_rsp_cb  command responses call back function
+ *
+ * @return  0 : set success
+ *         -1 : function is null
+ */
+void onenet_set_cmd_rsp_cb(void (*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_size, uint8_t **resp_data, size_t *resp_size))
+{
+
+    onenet_mqtt.cmd_rsp_cb = cmd_rsp_cb;
+
+}
+
+#ifdef FINSH_USING_MSH
+#include <finsh.h>
+
+MSH_CMD_EXPORT(onenet_mqtt_init, OneNET cloud mqtt initializate);
+
+#endif

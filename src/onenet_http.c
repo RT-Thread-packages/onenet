@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include <cJSON.h>
+#include "cJSON_util.h"
 #include <webclient.h>
 
 #include <onenet.h>
@@ -138,79 +139,65 @@ __exit:
 }
 
 
-static rt_err_t onenet_get_string_data(const char *ds_name, const char *str, char *out_buff)
+static rt_err_t onenet_get_string_data(const char *ds_name, const char *str, char **out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
     {
-        log_e("MQTT online push failed! cJSON create object error return NULL!");
+        log_e("onenet publish string data failed! cJSON create object error return NULL!");
         return -RT_ENOMEM;
     }
 
     cJSON_AddStringToObject(root, ds_name, str);
 
     /* render a cJSON structure to buffer */
-    msg_str = cJSON_PrintUnformatted(root);
-    if (!msg_str)
+    *out_buff = cJSON_PrintUnformatted(root);
+    if (!(*out_buff))
     {
-        log_e("Device online push failed! cJSON print unformatted error return NULL!");
+        log_e("onenet publish string data failed! cJSON print unformatted error return NULL!");
         result = -RT_ENOMEM;
         goto __exit;
     }
-
-    strncpy(out_buff, msg_str, strlen(msg_str));
 
 __exit:
     if (root)
     {
         cJSON_Delete(root);
     }
-    if (msg_str)
-    {
-        ONENET_FREE(msg_str);
-    }
 
     return result;
 }
 
-static rt_err_t onenet_get_digit_data(const char *ds_name, const double digit, char *out_buff)
+static rt_err_t onenet_get_digit_data(const char *ds_name, const double digit, char **out_buff)
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-    char *msg_str = RT_NULL;
 
     root = cJSON_CreateObject();
     if (!root)
     {
-        log_e("MQTT online push failed! cJSON create object error return NULL!");
+        log_e("onenet publish digit data failed! cJSON create object error return NULL!");
         return -RT_ENOMEM;
     }
 
     cJSON_AddNumberToObject(root, ds_name, digit);
 
     /* render a cJSON structure to buffer */
-    msg_str = cJSON_PrintUnformatted(root);
-    if (!msg_str)
+    *out_buff = cJSON_PrintUnformatted(root);
+    if (!(*out_buff))
     {
-        log_e("Device online push failed! cJSON print unformatted error return NULL!");
+        log_e("onenet publish digit data failed! cJSON print unformatted error return NULL!");
         result = -RT_ENOMEM;
         goto __exit;
     }
-
-    strncpy(out_buff, msg_str, strlen(msg_str));
 
 __exit:
     if (root)
     {
         cJSON_Delete(root);
-    }
-    if (msg_str)
-    {
-        ONENET_FREE(msg_str);
     }
 
     return result;
@@ -223,7 +210,7 @@ __exit:
  * @param   digit       digit data
  *
  * @return  0 : upload data success
- *         -5 : No memory
+ *         -5 : no memory
  */
 rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit)
 {
@@ -232,15 +219,8 @@ rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit)
 
     assert(ds_name);
 
-    send_buffer = (char *)ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
-    if (!send_buffer)
-    {
-        log_e("ONENET HTTP upload digit failed! No memory for send buffer!");
-        return -RT_ENOMEM;
-    }
-
     /* get JSON format data */
-    result = onenet_get_digit_data(ds_name, digit, send_buffer);
+    result = onenet_get_digit_data(ds_name, digit, &send_buffer);
     if (result < 0)
     {
         goto __exit;
@@ -256,20 +236,20 @@ rt_err_t onenet_http_upload_digit(const char *ds_name, const double digit)
 __exit:
     if (send_buffer)
     {
-        ONENET_FREE(send_buffer);
+        cJSON_free(send_buffer);
     }
 
     return result;
 }
 
 /**
- *upload string data to OneNET cloud.
+ * upload string data to OneNET cloud.
  *
  * @param   ds_name     datastream name
  * @param   str         string data
  *
  * @return  0 : upload data success
- *         -5 : No memory
+ *         -5 : no memory
  */
 rt_err_t onenet_http_upload_string(const char *ds_name, const char *str)
 {
@@ -279,15 +259,8 @@ rt_err_t onenet_http_upload_string(const char *ds_name, const char *str)
     assert(ds_name);
     assert(str);
 
-    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
-    if (!send_buffer)
-    {
-        log_e("ONENET HTTP upload string failed! No memory for send buffer!");
-        return -RT_ENOMEM;
-    }
-
     /* get JSON format data */
-    result = onenet_get_string_data(ds_name, str, send_buffer);
+    result = onenet_get_string_data(ds_name, str, &send_buffer);
     if (result < 0)
     {
         goto __exit;
@@ -303,13 +276,13 @@ rt_err_t onenet_http_upload_string(const char *ds_name, const char *str)
 __exit:
     if (send_buffer)
     {
-        ONENET_FREE(send_buffer);
+        cJSON_free(send_buffer);
     }
 
     return result;
 }
 
-static rt_err_t response_register_handlers(const unsigned char *rec_buf, const int length)
+static rt_err_t response_register_handlers(const unsigned char *rec_buf, const size_t length)
 {
     cJSON *root = RT_NULL;
     cJSON *item = RT_NULL;
@@ -350,8 +323,8 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     char *header = RT_NULL, *header_ptr;
     char *buffer = send_buffer;
     char *URI = RT_NULL;
-    int length;
-    unsigned char *rec_buf;
+    size_t length;
+    char *rec_buf;
     rt_err_t result = RT_EOK;
 
     session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
@@ -362,7 +335,7 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
         goto __exit;
     }
 
-    URI = ONENET_CALLOC(1, ONENET_CON_URI_LEN);
+    URI = (char *) ONENET_CALLOC(1, ONENET_CON_URI_LEN);
     if (URI == RT_NULL)
     {
         log_e("OneNet register device failed! No memory for URI buffer!");
@@ -370,7 +343,7 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
         goto __exit;
     }
 
-    rec_buf = ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
+    rec_buf = (char *) ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
     if (rec_buf == RT_NULL)
     {
         log_e("OneNet register device failed! No memory for response data buffer!");
@@ -506,13 +479,13 @@ __exit:
 }
 
 /**
- *Register device to OneNET cloud.
+ * Register device to OneNET cloud.
  *
  * @param   name            device name
  * @param   auth_info       authentication information
  *
  * @return  0 : register device success
- *         -5 : No memory
+ *         -5 : no memory
  */
 rt_err_t onenet_http_register_device(const char *name, const char *auth_info)
 {
@@ -522,7 +495,7 @@ rt_err_t onenet_http_register_device(const char *name, const char *auth_info)
     assert(name);
     assert(auth_info);
 
-    send_buffer = ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
+    send_buffer = (char *) ONENET_CALLOC(1, ONENET_SEND_DATA_LEN);
     if (!send_buffer)
     {
         log_e("ONENET register device failed! No memory for send buffer!");
