@@ -156,7 +156,7 @@ rt_err_t onenet_http_register_device(const char *dev_name, const char *auth_info
 #endif
 
 /* get a datastream from OneNET cloud. */
-rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_datastream_info *datastream);
+rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_info *datastream);
 /* get datapoints from OneNET cloud. Returned cJSON need to be free when user finished using the data. */
 cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit);
 cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, size_t limit);
