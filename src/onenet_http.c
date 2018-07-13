@@ -44,6 +44,8 @@ static rt_err_t onenet_upload_data(char *send_buffer)
     char *URI = RT_NULL;
     rt_err_t result = RT_EOK;
 
+    assert(send_buffer);
+
     session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
     if (!session)
     {
@@ -140,6 +142,10 @@ static rt_err_t onenet_get_string_data(const char *ds_name, const char *str, cha
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
 
+    assert(ds_name);
+    assert(str);
+    assert(out_buff);
+
     root = cJSON_CreateObject();
     if (!root)
     {
@@ -171,6 +177,9 @@ static rt_err_t onenet_get_digit_data(const char *ds_name, const double digit, c
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
+
+    assert(ds_name);
+    assert(out_buff);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -285,6 +294,8 @@ static rt_err_t response_register_handlers(const unsigned char *rec_buf, const s
     cJSON *itemid = RT_NULL;
     cJSON *itemapikey = RT_NULL;
 
+    assert(rec_buf);
+
     log_d("response is %.*s\n", length, rec_buf);
 
     root = cJSON_Parse((char *)rec_buf);
@@ -322,6 +333,8 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     size_t length;
     char *rec_buf;
     rt_err_t result = RT_EOK;
+
+    assert(send_buffer);
 
     session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
     if (!session)
@@ -431,8 +444,11 @@ static rt_err_t onenet_get_register_device_data(const char *ds_name, const char 
 {
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
-
     char *msg_str = RT_NULL;
+
+    assert(ds_name);
+    assert(auth_info);
+    assert(out_buff);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -522,6 +538,8 @@ static cJSON *response_get_datapoints_handlers(const uint8_t *rec_buf)
     cJSON *itemdata = RT_NULL ;
     cJSON *item = RT_NULL;
 
+    assert(rec_buf);
+
     root = cJSON_Parse((char *) rec_buf);
     if (!root)
     {
@@ -558,6 +576,8 @@ static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *en
     unsigned char *rec_buf = RT_NULL;
     rt_err_t result = RT_EOK;
     cJSON * itemdata = RT_NULL;
+
+    assert(datastream);
 
     session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
     if (!session)
@@ -690,6 +710,8 @@ __exit:
  */
 cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit)
 {
+    assert(ds_name);
+
     return onenet_http_get_datapoints(ds_name, RT_NULL, RT_NULL, RT_NULL, limit);
 }
 
@@ -707,6 +729,8 @@ cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, s
 {
     char start_buf[ONENET_TIME_BUF_LEN] = { 0 }, end_buf[ONENET_TIME_BUF_LEN] = { 0 };
     struct tm *cur_tm;
+
+    assert(ds_name);
 
     time_t time = (time_t) (start + 8 * 60 * 60);
 
@@ -741,6 +765,8 @@ cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t dur
     struct tm *cur_tm;
     char start_buf[ONENET_TIME_BUF_LEN] = { 0 };
 
+    assert(ds_name);
+
     time_t time = (time_t) (start + 8 * 60 * 60);
 
     cur_tm = localtime(&time);
@@ -750,4 +776,206 @@ cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t dur
 
     return onenet_http_get_datapoints(ds_name, start_buf, RT_NULL, duration, limit);
 
+}
+
+static rt_err_t response_get_datastreams_handlers(const unsigned char *rec_buf, struct rt_onenet_ds_info *datastream)
+{
+    cJSON *root = RT_NULL;
+    cJSON *item = RT_NULL;
+    cJSON *itemdata = RT_NULL;
+    cJSON *itemarray = RT_NULL;
+    rt_err_t result = RT_EOK;
+
+    assert(rec_buf);
+    assert(datastream);
+
+    root = cJSON_Parse((char *) rec_buf);
+    if (!root)
+    {
+        log_e("onenet get datastreams failed! cJSON Parse data error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    item = cJSON_GetObjectItem(root, "errno");
+    if (item->valueint == 0)
+    {
+        itemdata = cJSON_GetObjectItem(root, "data");
+
+        for (int i = 0; i < cJSON_GetArraySize(itemdata->child); i++)
+        {
+            itemarray = cJSON_GetArrayItem(itemdata->child, i);
+
+            if (strcmp(itemarray->string, "update_at") == 0)
+            {
+                rt_strncpy(datastream->update_time, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "unit") == 0)
+            {
+                rt_strncpy(datastream->unit, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "id") == 0)
+            {
+                rt_strncpy(datastream->id, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "unit_symbol") == 0)
+            {
+                rt_strncpy(datastream->unit_symbol, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "current_value") == 0)
+            {
+                rt_strncpy(datastream->current_value, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "create_time") == 0)
+            {
+                rt_strncpy(datastream->create_time, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+            else if (strcmp(itemarray->string, "tags") == 0)
+            {
+                rt_strncpy(datastream->tags, itemarray->valuestring, ONENET_DATASTREAM_NAME_MAX);
+            }
+
+        }
+
+    }
+    else
+    {
+        log_e("onenet get datastreams failed! errno is %d", item->valueint);
+        result = -RT_ERROR;
+    }
+
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+
+    return result;
+
+}
+
+/**
+ * get datastream information from onenet cloud
+ *
+ * @param   ds_name     datastream name
+ * @param   datastream  struct to save datastream information
+ *
+ * @return  0 : get datastream information success
+ *         -1 : get response fail
+ *         -5 : no memory
+ */
+rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_info *datastream)
+{
+    struct webclient_session *session = RT_NULL;
+    char *header = RT_NULL, *header_ptr = RT_NULL;
+    char *URI = RT_NULL;
+    unsigned char *rec_buf = RT_NULL;
+    rt_err_t result = RT_EOK;
+
+    assert(ds_name);
+    assert(datastream);
+
+    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
+    if (!session)
+    {
+        log_e("onenet get datastreams failed! No memory for session structure!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    URI = (char *) ONENET_CALLOC(1, ONENET_CON_URI_LEN);
+    if (URI == NULL)
+    {
+        log_e("onenet get datastreams failed! No memory for URI buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    rec_buf = (unsigned char *) ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
+    if (rec_buf == NULL)
+    {
+        log_e("onenet get datastreams failed! No memory for response data buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datastreams?datastream_ids=%s", onenet_info.device_id, ds_name);
+
+    /* connect OneNET cloud */
+    result = webclient_connect(session, URI);
+    if (result < 0)
+    {
+        log_e("onenet get datastreams failed! Webclient connect URI(%s) failed!", URI);
+        goto __exit;
+    }
+
+    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
+    if (header == RT_NULL)
+    {
+        log_e("onenet get datastreams failed! No memory for header buffer!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+    header_ptr = header;
+
+    /* build header for upload */
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "api-key: %s\r\n", onenet_info.api_key);
+
+    header_ptr += rt_snprintf(header_ptr,
+                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
+                              "Content-Type: application/octet-stream\r\n");
+
+    /* send header data */
+    result = webclient_send_header(session, WEBCLIENT_GET, header, header_ptr - header);
+    if (result < 0)
+    {
+        log_e("onenet get datastreams failed! Send header buffer failed return %d!", result);
+        goto __exit;
+    }
+
+    if (webclient_handle_response(session))
+    {
+        if (session->response != 200)
+        {
+            log_e("onenet get datastreams failed! Handle response(%d) error!", session->response);
+            result = -RT_ERROR;
+            goto __exit;
+        }
+        else
+        {
+            if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
+            {
+                if (response_get_datastreams_handlers(rec_buf, datastream) < 0)
+                {
+                    result = -RT_ERROR;
+                }
+
+            }
+            else
+            {
+                result = -RT_ERROR;
+            }
+
+        }
+
+    }
+
+__exit:
+    if (session)
+    {
+        webclient_close(session);
+    }
+    if (URI)
+    {
+        ONENET_FREE(URI);
+    }
+    if (header)
+    {
+        ONENET_FREE(header);
+    }
+    if (rec_buf)
+    {
+        ONENET_FREE(rec_buf);
+    }
+    return result;
 }
