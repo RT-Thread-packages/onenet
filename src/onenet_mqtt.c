@@ -23,11 +23,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cJSON_util.h"
+#ifdef RT_USING_DFS
+#include <dfs_posix.h>
+#endif
+
+#include <cJSON_util.h>
 
 #include <paho_mqtt.h>
 
 #include <onenet.h>
+
+#define  ONENET_TOPIC_DP    "$dp"
 
 static rt_bool_t init_ok = RT_FALSE;
 static MQTTClient mq_client;
@@ -46,6 +52,9 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
     size_t res_len = 0;
     uint8_t *response_buf = RT_NULL;
     char topicname[45] = { "$crsp/" };
+
+    assert(c);
+    assert(msg_data);
 
     log_d("topic %.*s receive a message\n", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
 
@@ -209,6 +218,10 @@ __exit:
 rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
 {
     MQTTMessage message;
+
+    assert(topic);
+    assert(msg);
+
     message.qos = QOS1;
     message.retained = 0;
     message.payload = (void *) msg;
@@ -227,6 +240,10 @@ static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double dig
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
     char *msg_str = RT_NULL;
+
+    assert(ds_name);
+    assert(out_buff);
+    assert(length);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -298,7 +315,7 @@ rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit)
         goto __exit;
     }
 
-    result = onenet_mqtt_publish("$dp", (uint8_t *)send_buffer, length);
+    result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
         log_e("onenet publish failed!\n");
@@ -319,6 +336,11 @@ static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str
     rt_err_t result = RT_EOK;
     cJSON *root = RT_NULL;
     char *msg_str = RT_NULL;
+
+    assert(ds_name);
+    assert(str);
+    assert(out_buff);
+    assert(length);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -383,6 +405,7 @@ rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
     size_t length = 0;
 
     assert(ds_name);
+    assert(str);
 
     result = onenet_mqtt_get_string_data(ds_name, str, &send_buffer, &length);
     if (result < 0)
@@ -390,7 +413,7 @@ rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
         goto __exit;
     }
 
-    result = onenet_mqtt_publish("$dp", (uint8_t *)send_buffer, length);
+    result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
         log_e("onenet mqtt publish digit data failed!\n");
@@ -420,6 +443,157 @@ void onenet_set_cmd_rsp_cb(void (*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_si
     onenet_mqtt.cmd_rsp_cb = cmd_rsp_cb;
 
 }
+
+#ifdef RT_USING_DFS
+static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, int binlen, uint8_t **out_buff, size_t *length)
+{
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    assert(str);
+    assert(bin);
+    assert(out_buff);
+    assert(length);
+
+    root = cJSON_CreateObject();
+    if (!root)
+    {
+        log_e("MQTT online push failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    cJSON_AddStringToObject(root, "ds_id", str);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        log_e("Device online push failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    /* size = header(3) + json + binary length(4) + binary length +'\0' */
+    *out_buff = (uint8_t *) ONENET_MALLOC(strlen(msg_str) + 3 + 4 + binlen + 1);
+
+    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
+    *length = strlen(&(*out_buff)[3]);
+
+    /* mqtt head and cjson length */
+    (*out_buff)[0] = 0x02;
+    (*out_buff)[1] = (*length & 0xff00) >> 8;
+    (*out_buff)[2] = *length & 0xff;
+    *length += 3;
+
+    /* binary data length */
+    (*out_buff)[(*length)++] = (binlen & 0xff000000) >> 24;
+    (*out_buff)[(*length)++] = (binlen & 0x00ff0000) >> 16;
+    (*out_buff)[(*length)++] = (binlen & 0x0000ff00) >> 8;
+    (*out_buff)[(*length)++] = (binlen & 0x000000ff);
+
+    memcpy(&((*out_buff)[*length]), bin, binlen);
+    *length = *length + binlen;
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        cJSON_free(msg_str);
+    }
+
+    return result;
+}
+
+/**
+ * upload binary data to onenet cloud
+ *
+ * @param   ds_name     datastream name
+ * @param   bin_path    binary file path
+ *
+ * @return  0 : upload success
+ *         -1 : invalid argument or open file fail
+ */
+rt_err_t onenet_mqtt_upload_bin(const char *ds_name, const char *bin_path)
+{
+    int fd;
+    size_t length = 0, bin_size = 0;
+    size_t bin_len = 0;
+    struct stat file_stat;
+    rt_err_t result = RT_EOK;
+    uint8_t *send_buffer = RT_NULL;
+    uint8_t * bin_array = RT_NULL;
+
+    assert(ds_name);
+    assert(bin_path);
+
+    if (stat(bin_path, &file_stat) < 0)
+    {
+        log_e("get file state fail!, bin path is %s",bin_path);
+        return -RT_ERROR;
+    }
+    else
+    {
+        bin_len = file_stat.st_size;
+        if (bin_len > 3 * 1024 * 1024)
+        {
+            log_e("bin length must be less than 3M, %s length is %d", bin_path, bin_len);
+            return -RT_ERROR;
+        }
+
+    }
+
+    fd = open(bin_path, O_RDONLY);
+    if (fd >= 0)
+    {
+        bin_array = (uint8_t *) ONENET_MALLOC(bin_len);
+
+        bin_size = read(fd, bin_array, file_stat.st_size);
+        close(fd);
+        if (bin_size <= 0)
+        {
+            log_e("read %s file fail!", bin_path);
+            result = -RT_ERROR;
+            goto __exit;
+        }
+    }
+    else
+    {
+        log_e("open %s file fail!", bin_path);
+        return -RT_ERROR;
+    }
+
+    result = onenet_mqtt_get_bin_data(ds_name, bin_array, bin_size, &send_buffer, &length);
+    if (result < 0)
+    {
+        result = -RT_ERROR;
+        goto __exit;
+    }
+
+    result = onenet_mqtt_publish(ONENET_TOPIC_DP, send_buffer, length);
+    if (result < 0)
+    {
+        log_e("onenet publish %s data failed(%d)!", bin_path, result);
+        result = -RT_ERROR;
+        goto __exit;
+    }
+
+__exit:
+    if (send_buffer)
+    {
+        ONENET_FREE(send_buffer);
+    }
+    if (bin_array)
+    {
+        ONENET_FREE(bin_array);
+    }
+
+    return 0;
+}
+#endif /* RT_USING_DFS */
 
 #ifdef FINSH_USING_MSH
 #include <finsh.h>
