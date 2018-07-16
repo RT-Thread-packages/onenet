@@ -27,6 +27,7 @@
 #ifdef FINSH_USING_MSH
 #include <finsh.h>
 
+/* upload random value to temperature*/
 static void onenet_upload_entry(void *parameter)
 {
     int value = 0;
@@ -63,5 +64,61 @@ int onenet_upload_cycle(void)
     return 0;
 }
 MSH_CMD_EXPORT(onenet_upload_cycle, send data to OneNET cloud cycle);
+
+int onenet_publish_digit(int argc, char **argv)
+{
+    if (argc != 3)
+    {
+        log_e("onenet_publish [datastream_id]  [value]  - mqtt pulish digit data to OneNET.");
+        return -1;
+    }
+
+    if (onenet_mqtt_upload_digit(argv[1], atoi(argv[2])) < 0)
+    {
+        log_e("upload digit data has an error!\n");
+    }
+
+    return 0;
+}
+MSH_CMD_EXPORT_ALIAS(onenet_publish_digit, onenet_mqtt_publish_digit, send digit data to onenet cloud);
+
+int onenet_publish_string(int argc, char **argv)
+{
+    if (argc != 3)
+    {
+        log_e("onenet_publish [datastream_id]  [string]  - mqtt pulish string data to OneNET.");
+        return -1;
+    }
+
+    if (onenet_mqtt_upload_string(argv[1], argv[2]) < 0)
+    {
+        log_e("upload string has an error!\n");
+    }
+
+    return 0;
+}
+MSH_CMD_EXPORT_ALIAS(onenet_publish_string, onenet_mqtt_publish_string, send string data to onenet cloud);
+
+/* onenet mqtt command response callback function */
+static void onenet_cmd_rsp_cb(uint8_t *recv_data, size_t recv_size, uint8_t **resp_data, size_t *resp_size)
+{
+    char res_buf[] = { "cmd is received!\n" };
+
+    log_d("recv data is %.*s\n", recv_size, recv_data);
+
+    /* user have to malloc memory for response data */
+    *resp_data = (uint8_t *) ONENET_MALLOC(strlen(res_buf));
+
+    strncpy(*resp_data, res_buf, strlen(res_buf));
+
+    *resp_size = strlen(res_buf);
+}
+
+/* set the onenet mqtt command response callback function */
+int onenet_set_cmd_rsp(int argc, char **argv)
+{
+    onenet_set_cmd_rsp_cb(onenet_cmd_rsp_cb);
+}
+MSH_CMD_EXPORT(onenet_set_cmd_rsp, set cmd response function);
 
 #endif /* FINSH_USING_MSH */
