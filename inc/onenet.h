@@ -95,6 +95,7 @@ if (!(EXPR))                                                                   \
 #define ONENET_INFO_APIKEY_LEN         32
 #define ONENET_INFO_PROID_LEN          16
 #define ONENET_INFO_AUTH_LEN           64
+#define ONENET_INFO_NAME_LEN           64
 #define ONENET_INFO_URL_LEN            32
 
 #define ONENET_DATASTREAM_NAME_MAX     32
@@ -167,6 +168,8 @@ void onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_siz
 #ifdef ONENET_USING_AUTO_REGISTER
 /* Save device info. */
 rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key);
+/* Get device name and auth info for register. */
+rt_err_t onenet_port_get_register_info(char *ds_name, char *auth_info);
 /* Get device info. */
 rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info);
 /* Check the device has been registered or not. */

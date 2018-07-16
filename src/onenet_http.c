@@ -82,15 +82,10 @@ static rt_err_t onenet_upload_data(char *send_buffer)
     header_ptr = header;
 
     /* build header for upload */
-#ifdef ONENET_USING_MQTT
     header_ptr += rt_snprintf(header_ptr,
                               WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
                               "api-key: %s\r\n", onenet_info.api_key);
-#else
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", ONENET_INFO_APIKEY);
-#endif
+
     header_ptr += rt_snprintf(header_ptr,
                               WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
                               "Content-Length: %d\r\n", strlen(buffer));
@@ -287,6 +282,7 @@ __exit:
     return result;
 }
 
+#ifdef ONENET_USING_AUTO_REGISTER
 static rt_err_t response_register_handlers(const unsigned char *rec_buf, const size_t length)
 {
     cJSON *root = RT_NULL;
@@ -530,6 +526,7 @@ __exit:
 
     return result;
 }
+#endif /* ONENET_USING_AUTO_REGISTER */
 
 static cJSON *response_get_datapoints_handlers(const uint8_t *rec_buf)
 {

@@ -137,14 +137,31 @@ static rt_err_t onenet_get_info(void)
     char dev_id[ONENET_INFO_DEVID_LEN] = { 0 };
     char api_key[ONENET_INFO_APIKEY_LEN] = { 0 };
     char auth_info[ONENET_INFO_AUTH_LEN] = { 0 };
+    char name[ONENET_INFO_NAME_LEN] = { 0 };
 
 #ifdef ONENET_USING_AUTO_REGISTER
+    if (!onenet_port_is_registed())
+    {
+        if (onenet_port_get_register_info(name, auth_info) < 0)
+        {
+            log_e("onenet get register info fail!");
+            return -RT_ERROR;
+        }
+
+        if (onenet_http_register_device(name, auth_info) < 0)
+        {
+            log_e("onenet register device fail! name is %s,auth info is %s", name, auth_info);
+            return -RT_ERROR;
+        }
+    }
+
     if (onenet_port_get_device_info(dev_id, api_key, auth_info))
     {
         log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s\n", dev_id, api_key, auth_info);
         return -RT_ERROR;
     }
-#elif
+
+#else
     strncpy(dev_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
     strncpy(api_key, ONENET_INFO_APIKEY, strlen(ONENET_INFO_APIKEY));
     strncpy(auth_info, ONENET_INFO_AUTH, strlen(ONENET_INFO_AUTH));
