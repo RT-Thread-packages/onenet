@@ -22,16 +22,17 @@
  */
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef RT_USING_DFS
-#include <dfs_posix.h>
-#endif
+#include <string.h>
 
 #include <cJSON_util.h>
 
 #include <paho_mqtt.h>
 
 #include <onenet.h>
+
+#ifdef RT_USING_DFS
+#include <dfs_posix.h>
+#endif
 
 #define  ONENET_TOPIC_DP    "$dp"
 
@@ -133,15 +134,21 @@ static rt_err_t onenet_mqtt_entry(void)
 
 static rt_err_t onenet_get_info(void)
 {
-    char dev_id[ONENET_INFO_DEVICE_LEN] = { 0 };
-    char api_key[ONENET_INFO_DEVICE_LEN] = { 0 };
-    char auth_info[ONENET_INFO_DEVICE_LEN] = { 0 };
+    char dev_id[ONENET_INFO_DEVID_LEN] = { 0 };
+    char api_key[ONENET_INFO_APIKEY_LEN] = { 0 };
+    char auth_info[ONENET_INFO_AUTH_LEN] = { 0 };
 
+#ifdef ONENET_USING_AUTO_REGISTER
     if (onenet_port_get_device_info(dev_id, api_key, auth_info))
     {
         log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s\n", dev_id, api_key, auth_info);
         return -RT_ERROR;
     }
+#elif
+    strncpy(dev_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
+    strncpy(api_key, ONENET_INFO_APIKEY, strlen(ONENET_INFO_APIKEY));
+    strncpy(auth_info, ONENET_INFO_AUTH, strlen(ONENET_INFO_AUTH));
+#endif
 
     if (strlen(api_key) < 15)
     {
