@@ -121,10 +121,6 @@ static rt_err_t onenet_mqtt_entry(void)
     mq_client.online_callback = mqtt_online_callback;
     mq_client.offline_callback = mqtt_offline_callback;
 
-    /* set subscribe table. */
-    mq_client.messageHandlers[0].topicFilter = ONENET_MQTT_SUBTOPIC;
-    mq_client.messageHandlers[0].callback = mqtt_callback;
-
     mq_client.defaultMessageHandler = mqtt_callback;
 
     paho_mqtt_start(&mq_client);
