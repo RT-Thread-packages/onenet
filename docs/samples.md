@@ -167,7 +167,8 @@ msh />onenet_set_cmd_rsp
 
 ```{.c}
 msh />onenet_set_cmd_rsp
-msh />[D/ONENET] (mqtt_callback:60) topic $creq/6db0c1b2-9a7e-5e4a-8897-bf62d4a3461f receive a message
+msh />[D/ONENET] (mqtt_callback:60) topic $creq/6db0c1b2-9a7e-5e4a-8897-bf62d4a3461f 
+receive a message
 [D/ONENET] (mqtt_callback:62) message length is 18
 [D/ONENET] (onenet_cmd_rsp_cb:107) recv data is hello rt-thread！
 ```

@@ -95,7 +95,9 @@ onenet_http_get_datastream("temperature",ds_temp);
 数据点信息可以通过以下 3 个 API 来获取
 
 > cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit);
+> 
 > cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, size_t limit);
+> 
 > cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t duration, size_t limit);
 
 这三个 API 返回的都是 cJSON 格式的数据点信息，区别只是查询的方法不一样，下面通过示例来讲解如何使用这 3 个 API。
@@ -104,7 +106,8 @@ onenet_http_get_datastream("temperature",ds_temp);
 /* 获取 temperature 数据流的最后10个数据点信息 */
 dp = onenet_get_dp_by_limit("temperature",10);
 
-/* 获取 temperature 数据流2018年7月19日14点50分0秒到2018年7月19日14点55分20秒的前10个数据点信息 */
+/* 获取 temperature 数据流2018年7月19日14点50分0秒到2018年7月19日14点55分20秒的前10个
+数据点信息 */
 /* 第二、三个参数是Unix时间戳 */
 dp = onenet_get_dp_by_start_end("temperature",1531983000，1531983320，10);
 
