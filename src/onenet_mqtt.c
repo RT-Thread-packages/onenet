@@ -464,7 +464,6 @@ void onenet_set_cmd_rsp_cb(void (*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_si
 
 }
 
-#ifdef RT_USING_DFS
 static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, int binlen, uint8_t **out_buff, size_t *length)
 {
     rt_err_t result = RT_EOK;
@@ -529,7 +528,52 @@ __exit:
 }
 
 /**
- * upload binary data to onenet cloud
+ * upload binary data to onenet cloud by path
+ *
+ * @param   ds_name     datastream name
+ * @param   bin         binary file
+ * @param   len         binary file length
+ *
+ * @return  0 : upload success
+ *         -1 : invalid argument or open file fail
+ */
+rt_err_t onenet_mqtt_upload_bin(const char *ds_name, uint8_t *bin, size_t len)
+{
+    size_t length = 0;
+    rt_err_t result = RT_EOK;
+    uint8_t *send_buffer = RT_NULL;
+    uint8_t *send_p = RT_NULL;
+
+    assert(ds_name);
+    assert(bin);
+
+    result = onenet_mqtt_get_bin_data(ds_name, bin, len, &send_buffer, &length);
+    if (result < 0)
+    {
+        result = -RT_ERROR;
+        goto __exit;
+    }
+
+    result = onenet_mqtt_publish(ONENET_TOPIC_DP, send_buffer, length);
+    if (result < 0)
+    {
+        log_e("onenet publish data failed(%d)!", result);
+        result = -RT_ERROR;
+        goto __exit;
+    }
+
+__exit:
+    if (send_buffer)
+    {
+        ONENET_FREE(send_buffer);
+    }
+
+    return result;
+}
+
+#ifdef RT_USING_DFS
+/**
+ * upload binary data to onenet cloud by path
  *
  * @param   ds_name     datastream name
  * @param   bin_path    binary file path
@@ -537,7 +581,7 @@ __exit:
  * @return  0 : upload success
  *         -1 : invalid argument or open file fail
  */
-rt_err_t onenet_mqtt_upload_bin(const char *ds_name, const char *bin_path)
+rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_path)
 {
     int fd;
     size_t length = 0, bin_size = 0;
@@ -611,7 +655,7 @@ __exit:
         ONENET_FREE(bin_array);
     }
 
-    return 0;
+    return result;
 }
 #endif /* RT_USING_DFS */
 
