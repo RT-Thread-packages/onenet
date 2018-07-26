@@ -137,9 +137,12 @@ int onenet_mqtt_init(void);
 rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len);
 
 #ifdef RT_USING_DFS
-/* Publish MQTT binary data to onenet. */
-rt_err_t onenet_mqtt_upload_bin(const char *ds_name, const char *bin_path);
+/* Publish MQTT binary data to onenet by path. */
+rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_path);
 #endif
+
+/* Publish MQTT binary data to onenet. */
+rt_err_t onenet_mqtt_upload_bin(const char *ds_name, uint8_t *bin, size_t len);
 
 /* Publish MQTT string data to onenet. */
 rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str);
@@ -169,7 +172,7 @@ void onenet_set_cmd_rsp_cb(void(*cmd_rsp_cb)(uint8_t *recv_data, size_t recv_siz
 /* Save device info. */
 rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key);
 /* Get device name and auth info for register. */
-rt_err_t onenet_port_get_register_info(char *ds_name, char *auth_info);
+rt_err_t onenet_port_get_register_info(char *dev_name, char *auth_info);
 /* Get device info. */
 rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info);
 /* Check the device has been registered or not. */
