@@ -49,7 +49,8 @@
 ```{.c}
 RT-Thread online packages
     IoT - internet of things  --->
-        [*] OneNET: China Mobile OneNet cloud SDK for RT-Thread
+        IoT Cloud  --->
+            [*] OneNET: China Mobile OneNet cloud SDK for RT-Thread
 ```
 
 进入 onenet 软件包的配置菜单按下图所示配置，里面的信息依据自己的产品和设备的**实际情况**填写
