@@ -27,6 +27,6 @@
 int onenet_port_data_process(char *recv_data, rt_size_t size)
 {
     log_d("Recv data : %.*s", size, recv_data);
-    
+
     return 0;
 }
