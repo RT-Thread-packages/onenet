@@ -17,7 +17,7 @@ rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key);
 rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info);
 ```
 
-### 获取注册信息
+## 获取注册信息
 
 > rt_err_t onenet_port_get_register_info(char *ds_name, char *auth_info)
 
@@ -32,7 +32,7 @@ onenet_port_get_register_info(char *dev_name, char *auth_info)
 }
 ```
 
-### 保存设备信息
+## 保存设备信息
 
 > rt_err_t onenet_port_save_device_info(char *dev_id, char *api_key)
 
@@ -47,7 +47,7 @@ onenet_port_save_device_info(char *dev_id, char *api_key)
 }
 ```
 
-### 检查是否已经注册
+## 检查是否已经注册
 
 > rt_bool_t onenet_port_is_registed(void)
 
@@ -62,7 +62,7 @@ onenet_port_is_registed(void)
 }
 ```
 
-### 获取设备信息
+## 获取设备信息
 
 > rt_err_t onenet_port_get_device_info(char *dev_id, char *api_key, char *auth_info)
 
