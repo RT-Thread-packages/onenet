@@ -556,7 +556,7 @@ static cJSON *response_get_datapoints_handlers(const uint8_t *rec_buf)
         log_e("get datapoints failed! errno is %d", item->valueint);
     }
 
-    if (!root)
+    if (root)
     {
         cJSON_Delete(root);
     }
@@ -704,6 +704,8 @@ __exit:
  * @param   limit       the number of datapoints most returned by this request
  *
  * @return  cjson of datapoints
+ *
+ * @note    returned cJSON need to be free when user finished using the data.
  */
 cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit)
 {
@@ -721,6 +723,8 @@ cJSON *onenet_get_dp_by_limit(char *ds_name, size_t limit)
  * @param   limit       the number of datapoints most returned by this request
  *
  * @return  cjson of datapoints
+ *
+ * @note    returned cJSON need to be free when user finished using the data.
  */
 cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, size_t limit)
 {
@@ -756,6 +760,8 @@ cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, s
  * @param   limit       the number of datapoints most returned by this request
  *
  * @return  cjson of datapoints
+ *
+ * @note    returned cJSON need to be free when user finished using the data.
  */
 cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t duration, size_t limit)
 {
