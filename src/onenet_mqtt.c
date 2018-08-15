@@ -57,9 +57,9 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
     assert(c);
     assert(msg_data);
 
-    log_d("topic %.*s receive a message\n", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
+    log_d("topic %.*s receive a message", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
 
-    log_d("message length is %d\n", msg_data->message->payloadlen);
+    log_d("message length is %d", msg_data->message->payloadlen);
 
     if (onenet_mqtt.cmd_rsp_cb != RT_NULL)
     {
@@ -153,7 +153,7 @@ static rt_err_t onenet_get_info(void)
 
     if (onenet_port_get_device_info(dev_id, api_key, auth_info))
     {
-        log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s\n", dev_id, api_key, auth_info);
+        log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s", dev_id, api_key, auth_info);
         return -RT_ERROR;
     }
 
@@ -338,7 +338,7 @@ rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit)
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet publish failed!\n");
+        log_e("onenet publish failed!");
         goto __exit;
     }
 
@@ -436,7 +436,7 @@ rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet mqtt publish digit data failed!\n");
+        log_e("onenet mqtt publish digit data failed!");
         goto __exit;
     }
 
