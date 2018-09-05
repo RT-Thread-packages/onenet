@@ -34,25 +34,30 @@
 #define ONENET_RECV_RESP_LEN           1024
 #define ONENET_TIME_BUF_LEN            24
 
+#if WEBCLIENT_SW_VERSION_NUM < 0x20000
+#error "Please upgrade the webclient version "
+#endif
+
+#define webclient_header_add(session, fmt, ...)                                                         \
+    do                                                                                                  \
+    {                                                                                                   \
+        if (webclient_header_fields_add(session, fmt, ##__VA_ARGS__) < 0)                               \
+        {                                                                                               \
+            LOG_E("webclient add header failed!");                                                      \
+            goto __exit;                                                                                \
+        }                                                                                               \
+    } while(0);                                                                                         \
+
 extern struct rt_onenet_info onenet_info;
 
 static rt_err_t onenet_upload_data(char *send_buffer)
 {
     struct webclient_session *session = RT_NULL;
-    char *header = RT_NULL, *header_ptr;
     char *buffer = send_buffer;
     char *URI = RT_NULL;
     rt_err_t result = RT_EOK;
 
     assert(send_buffer);
-
-    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
-    if (!session)
-    {
-        log_e("OneNet Send data failed! No memory for session structure!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
 
     URI = ONENET_CALLOC(1, ONENET_CON_URI_LEN);
     if (URI == RT_NULL)
@@ -64,56 +69,24 @@ static rt_err_t onenet_upload_data(char *send_buffer)
 
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datapoints?type=3", onenet_info.device_id);
 
-    /* connect OneNET cloud */
-    result = webclient_connect(session, URI);
-    if (result < 0)
+    session = webclient_session_create(1024);
+    if (session == RT_NULL)
     {
-        log_e("OneNet Send data failed! Webclient connect URI(%s) failed!", URI);
+        result = -RT_ERROR;
         goto __exit;
     }
 
-    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
-    if (header == RT_NULL)
+    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key)
+    webclient_header_add(session, "Content-Length: %d\r\n", strlen(buffer));
+    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+
+    if (webclient_post(session, URI, buffer) != 200)
     {
-        log_e("OneNet Send data failed! No memory for header buffer!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
-    header_ptr = header;
-
-    /* build header for upload */
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", onenet_info.api_key);
-
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Length: %d\r\n", strlen(buffer));
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Type: application/octet-stream\r\n");
-
-    /* send header data */
-    result = webclient_send_header(session, WEBCLIENT_POST, header, header_ptr - header);
-    if (result < 0)
-    {
-        log_e("OneNet Send data failed! Send header buffer failed return %d!", result);
+        result = -RT_ERROR;
         goto __exit;
     }
 
-    /* send body data */
-    webclient_write(session, (unsigned char *) buffer, strlen(buffer));
     log_d("buffer : %.*s", strlen(buffer), buffer);
-
-    if (webclient_handle_response(session))
-    {
-        if (session->response != 200)
-        {
-            log_e("OneNet Send data failed! Handle response(%d) error!", session->response);
-            result = -RT_ERROR;
-            goto __exit;
-        }
-    }
 
 __exit:
     if (session)
@@ -124,10 +97,7 @@ __exit:
     {
         ONENET_FREE(URI);
     }
-    if (header)
-    {
-        ONENET_FREE(header);
-    }
+
     return result;
 }
 
@@ -323,20 +293,18 @@ static rt_err_t response_register_handlers(const unsigned char *rec_buf, const s
 static rt_err_t onenet_upload_register_device(char *send_buffer)
 {
     struct webclient_session *session = RT_NULL;
-    char *header = RT_NULL, *header_ptr;
     char *buffer = send_buffer;
     char *URI = RT_NULL;
     size_t length;
-    char *rec_buf;
+    unsigned char *rec_buf;
     rt_err_t result = RT_EOK;
 
     assert(send_buffer);
 
-    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
-    if (!session)
+    session = webclient_session_create(1024);
+    if (session == RT_NULL)
     {
-        log_e("OneNet register device failed! No memory for session structure!");
-        result = -RT_ENOMEM;
+        result = -RT_ERROR;
         goto __exit;
     }
 
@@ -348,7 +316,7 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
         goto __exit;
     }
 
-    rec_buf = (char *) ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
+    rec_buf = (unsigned char *) ONENET_CALLOC(1, ONENET_RECV_RESP_LEN);
     if (rec_buf == RT_NULL)
     {
         log_e("OneNet register device failed! No memory for response data buffer!");
@@ -359,61 +327,25 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/register_de?register_code=");
     strcat(URI, ONENET_REGISTRATION_CODE);
 
-    /* connect OneNET cloud */
-    result = webclient_connect(session, URI);
-    if (result < 0)
+    webclient_header_add(session, "api-key: %s\r\n", ONENET_MASTER_APIKEY);
+    webclient_header_add(session, "Content-Length: %d\r\n", strlen(buffer));
+    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+
+    if (webclient_post(session, URI, buffer) != 200)
     {
-        log_e("OneNet register device failed! Webclient connect URI(%s) failed!", URI);
+        result = -RT_ERROR;
         goto __exit;
     }
 
-    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
-    if (header == RT_NULL)
+    length = webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN);
+
+    if (length > 0)
     {
-        log_e("OneNet register device failed! No memory for header buffer!");
-        result = -RT_ENOMEM;
-        goto __exit;
+        response_register_handlers(rec_buf, length);
     }
-    header_ptr = header;
-
-    /* build header for upload */
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", ONENET_MASTER_APIKEY);
-
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Length: %d\r\n", strlen(buffer));
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Type: application/octet-stream\r\n");
-
-    /* send header data */
-    result = webclient_send_header(session, WEBCLIENT_POST, header, header_ptr - header);
-    if (result < 0)
+    else
     {
-        log_e("OneNet register device failed! Send header buffer failed return %d!", result);
-        goto __exit;
-    }
-
-    /* send body data */
-    webclient_write(session, (unsigned char *) buffer, strlen(buffer));
-    log_d("buffer : %.*s", strlen(buffer), buffer);
-
-    if (webclient_handle_response(session))
-    {
-        if (session->response != 200)
-        {
-            log_e("OneNet register device failed! Handle response(%d) error!", session->response);
-            result = -RT_ERROR;
-            goto __exit;
-        }
-        else
-        {
-            length = webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN);
-            response_register_handlers(rec_buf, length);
-        }
-
+        log_e("OneNet register device failed! Handle response(%d) error!", session->resp_status);
     }
 
 __exit:
@@ -424,10 +356,6 @@ __exit:
     if (URI)
     {
         ONENET_FREE(URI);
-    }
-    if (header)
-    {
-        ONENET_FREE(header);
     }
     if (rec_buf)
     {
@@ -568,20 +496,11 @@ static cJSON *response_get_datapoints_handlers(const uint8_t *rec_buf)
 static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *end, int duration, size_t limit)
 {
     struct webclient_session *session = RT_NULL;
-    char *header = RT_NULL, *header_ptr;
     char *URI = RT_NULL;
     unsigned char *rec_buf = RT_NULL;
-    rt_err_t result = RT_EOK;
-    cJSON * itemdata = RT_NULL;
+    cJSON *itemdata = RT_NULL;
 
     assert(datastream);
-
-    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
-    if (!session)
-    {
-        log_e("OneNet Send data failed! No memory for session structure!");
-        return RT_NULL;
-    }
 
     URI = (char *) ONENET_CALLOC(1, ONENET_CON_URI_LEN);
     if (URI == RT_NULL)
@@ -624,56 +543,25 @@ static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *en
         strcat(URI, number);
     }
 
-    /* connect OneNET cloud */
-    result = webclient_connect(session, URI);
-    if (result < 0)
+    session = webclient_session_create(1024);
+    if (session == RT_NULL)
     {
-        log_e("OneNet Send data failed! Webclient connect URI(%s) failed!", URI);
         goto __exit;
     }
 
-    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
-    if (header == RT_NULL)
+    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key);
+    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+
+    if (webclient_get(session, URI) != 200)
     {
-        log_e("OneNet Send data failed! No memory for header buffer!");
-        goto __exit;
-    }
-    header_ptr = header;
-
-    /* build header for upload */
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", onenet_info.api_key);
-
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Type: application/octet-stream\r\n");
-
-    /* send header data */
-    result = webclient_send_header(session, WEBCLIENT_GET, header, header_ptr - header);
-    if (result < 0)
-    {
-        log_e("OneNet Send data failed! Send header buffer failed return %d!", result);
         goto __exit;
     }
 
-    if (webclient_handle_response(session))
+    if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
     {
-        if (session->response != 200)
-        {
-            log_e("OneNet Send data failed! Handle response(%d) error!", session->response);
-            result = -RT_ERROR;
-        }
-        else
-        {
-            if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
-            {
-                itemdata = response_get_datapoints_handlers(rec_buf);
-            }
-
-        }
-
+        itemdata = response_get_datapoints_handlers(rec_buf);
     }
+
 
 __exit:
     if (session)
@@ -684,10 +572,7 @@ __exit:
     {
         ONENET_FREE(URI);
     }
-    if (header)
-    {
-        ONENET_FREE(header);
-    }
+
     if (rec_buf)
     {
         ONENET_FREE(rec_buf);
@@ -733,19 +618,19 @@ cJSON *onenet_get_dp_by_start_end(char *ds_name, uint32_t start, uint32_t end, s
 
     assert(ds_name);
 
-    time_t time = (time_t) (start + 8 * 60 * 60);
+    time_t time = (time_t)(start + 8 * 60 * 60);
 
     cur_tm = localtime(&time);
 
     rt_sprintf(start_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
-            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+               cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
 
-    time = (time_t) (end + 8 * 60 * 60);
+    time = (time_t)(end + 8 * 60 * 60);
 
     cur_tm = localtime(&time);
 
     rt_sprintf(end_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
-            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+               cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
 
     return onenet_http_get_datapoints(ds_name, start_buf, end_buf, RT_NULL, limit);
 
@@ -770,12 +655,12 @@ cJSON *onenet_get_dp_by_start_duration(char *ds_name, uint32_t start, size_t dur
 
     assert(ds_name);
 
-    time_t time = (time_t) (start + 8 * 60 * 60);
+    time_t time = (time_t)(start + 8 * 60 * 60);
 
     cur_tm = localtime(&time);
 
     rt_sprintf(start_buf, "%04d-%02d-%02dT%02d:%02d:%02d", cur_tm->tm_year + 1900, cur_tm->tm_mon + 1, cur_tm->tm_mday,
-            cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
+               cur_tm->tm_hour, cur_tm->tm_min, cur_tm->tm_sec);
 
     return onenet_http_get_datapoints(ds_name, start_buf, RT_NULL, duration, limit);
 
@@ -868,21 +753,12 @@ static rt_err_t response_get_datastreams_handlers(const unsigned char *rec_buf, 
 rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_info *datastream)
 {
     struct webclient_session *session = RT_NULL;
-    char *header = RT_NULL, *header_ptr = RT_NULL;
     char *URI = RT_NULL;
     unsigned char *rec_buf = RT_NULL;
     rt_err_t result = RT_EOK;
 
     assert(ds_name);
     assert(datastream);
-
-    session = (struct webclient_session *) ONENET_CALLOC(1, sizeof(struct webclient_session));
-    if (!session)
-    {
-        log_e("onenet get datastreams failed! No memory for session structure!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
 
     URI = (char *) ONENET_CALLOC(1, ONENET_CON_URI_LEN);
     if (URI == NULL)
@@ -902,65 +778,32 @@ rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_inf
 
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datastreams?datastream_ids=%s", onenet_info.device_id, ds_name);
 
-    /* connect OneNET cloud */
-    result = webclient_connect(session, URI);
-    if (result < 0)
+    session = webclient_session_create(1024);
+    if (session == RT_NULL)
     {
-        log_e("onenet get datastreams failed! Webclient connect URI(%s) failed!", URI);
+        result = -RT_ERROR;
         goto __exit;
     }
 
-    header = (char *) ONENET_CALLOC(1, ONENET_HEAD_DATA_LEN);
-    if (header == RT_NULL)
+    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key);
+    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+
+    if (webclient_get(session, URI) != 200)
     {
-        log_e("onenet get datastreams failed! No memory for header buffer!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
-    header_ptr = header;
-
-    /* build header for upload */
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "api-key: %s\r\n", onenet_info.api_key);
-
-    header_ptr += rt_snprintf(header_ptr,
-                              WEBCLIENT_HEADER_BUFSZ - (header_ptr - header),
-                              "Content-Type: application/octet-stream\r\n");
-
-    /* send header data */
-    result = webclient_send_header(session, WEBCLIENT_GET, header, header_ptr - header);
-    if (result < 0)
-    {
-        log_e("onenet get datastreams failed! Send header buffer failed return %d!", result);
+        result = -RT_ERROR;
         goto __exit;
     }
 
-    if (webclient_handle_response(session))
+    if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
     {
-        if (session->response != 200)
+        if (response_get_datastreams_handlers(rec_buf, datastream) < 0)
         {
-            log_e("onenet get datastreams failed! Handle response(%d) error!", session->response);
             result = -RT_ERROR;
-            goto __exit;
         }
-        else
-        {
-            if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
-            {
-                if (response_get_datastreams_handlers(rec_buf, datastream) < 0)
-                {
-                    result = -RT_ERROR;
-                }
-
-            }
-            else
-            {
-                result = -RT_ERROR;
-            }
-
-        }
-
+    }
+    else
+    {
+        result = -RT_ERROR;
     }
 
 __exit:
@@ -972,10 +815,7 @@ __exit:
     {
         ONENET_FREE(URI);
     }
-    if (header)
-    {
-        ONENET_FREE(header);
-    }
+
     if (rec_buf)
     {
         ONENET_FREE(rec_buf);
