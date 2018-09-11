@@ -33,12 +33,13 @@
 #define ONENET_CON_URI_LEN             256
 #define ONENET_RECV_RESP_LEN           1024
 #define ONENET_TIME_BUF_LEN            24
+#define ONENET_HTTP_HEAD_LEN           1024
 
 #if WEBCLIENT_SW_VERSION_NUM < 0x20000
 #error "Please upgrade the webclient version "
 #endif
 
-#define webclient_header_add(session, fmt, ...)                                                         \
+#define WEBCLIENT_HEADER_ADD(session, fmt, ...)                                                         \
     do                                                                                                  \
     {                                                                                                   \
         if (webclient_header_fields_add(session, fmt, ##__VA_ARGS__) < 0)                               \
@@ -47,7 +48,7 @@
             goto __exit;                                                                                \
         }                                                                                               \
     } while(0);                                                                                         \
-
+ 
 extern struct rt_onenet_info onenet_info;
 
 static rt_err_t onenet_upload_data(char *send_buffer)
@@ -69,16 +70,16 @@ static rt_err_t onenet_upload_data(char *send_buffer)
 
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datapoints?type=3", onenet_info.device_id);
 
-    session = webclient_session_create(1024);
+    session = webclient_session_create(ONENET_HTTP_HEAD_LEN);
     if (session == RT_NULL)
     {
         result = -RT_ERROR;
         goto __exit;
     }
 
-    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key)
-    webclient_header_add(session, "Content-Length: %d\r\n", strlen(buffer));
-    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+    WEBCLIENT_HEADER_ADD(session, "api-key: %s\r\n", onenet_info.api_key);
+    WEBCLIENT_HEADER_ADD(session, "Content-Length: %d\r\n", strlen(buffer));
+    WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
     if (webclient_post(session, URI, buffer) != 200)
     {
@@ -301,7 +302,7 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
 
     assert(send_buffer);
 
-    session = webclient_session_create(1024);
+    session = webclient_session_create(ONENET_HTTP_HEAD_LEN);
     if (session == RT_NULL)
     {
         result = -RT_ERROR;
@@ -327,9 +328,9 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/register_de?register_code=");
     strcat(URI, ONENET_REGISTRATION_CODE);
 
-    webclient_header_add(session, "api-key: %s\r\n", ONENET_MASTER_APIKEY);
-    webclient_header_add(session, "Content-Length: %d\r\n", strlen(buffer));
-    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+    WEBCLIENT_HEADER_ADD(session, "api-key: %s\r\n", ONENET_MASTER_APIKEY);
+    WEBCLIENT_HEADER_ADD(session, "Content-Length: %d\r\n", strlen(buffer));
+    WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
     if (webclient_post(session, URI, buffer) != 200)
     {
@@ -499,6 +500,7 @@ static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *en
     char *URI = RT_NULL;
     unsigned char *rec_buf = RT_NULL;
     cJSON *itemdata = RT_NULL;
+    size_t res_len = 0;
 
     assert(datastream);
 
@@ -543,21 +545,28 @@ static cJSON *onenet_http_get_datapoints(char *datastream, char *start, char *en
         strcat(URI, number);
     }
 
-    session = webclient_session_create(1024);
+    session = webclient_session_create(ONENET_HTTP_HEAD_LEN);
     if (session == RT_NULL)
     {
         goto __exit;
     }
 
-    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key);
-    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+    WEBCLIENT_HEADER_ADD(session, "api-key: %s\r\n", onenet_info.api_key);
+    WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
     if (webclient_get(session, URI) != 200)
     {
         goto __exit;
     }
 
-    if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
+    res_len = webclient_content_length_get(session);
+
+    if (res_len > ONENET_HTTP_HEAD_LEN)
+    {
+        log_e("response data length(%d) is greater than the default recv buffer size(%d)!", res_len, ONENET_RECV_RESP_LEN);
+        goto __exit;
+    }
+    else if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
     {
         itemdata = response_get_datapoints_handlers(rec_buf);
     }
@@ -756,6 +765,7 @@ rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_inf
     char *URI = RT_NULL;
     unsigned char *rec_buf = RT_NULL;
     rt_err_t result = RT_EOK;
+    size_t res_len = 0;
 
     assert(ds_name);
     assert(datastream);
@@ -778,23 +788,30 @@ rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_inf
 
     rt_snprintf(URI, ONENET_CON_URI_LEN, "http://api.heclouds.com/devices/%s/datastreams?datastream_ids=%s", onenet_info.device_id, ds_name);
 
-    session = webclient_session_create(1024);
+    session = webclient_session_create(ONENET_HTTP_HEAD_LEN);
     if (session == RT_NULL)
     {
         result = -RT_ERROR;
         goto __exit;
     }
 
-    webclient_header_add(session, "api-key: %s\r\n", onenet_info.api_key);
-    webclient_header_add(session, "Content-Type: application/octet-stream\r\n");
+    WEBCLIENT_HEADER_ADD(session, "api-key: %s\r\n", onenet_info.api_key);
+    WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
     if (webclient_get(session, URI) != 200)
     {
         result = -RT_ERROR;
         goto __exit;
     }
+    
+    res_len = webclient_content_length_get(session);
 
-    if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
+    if (res_len > ONENET_HTTP_HEAD_LEN)
+    {
+        log_e("response data length(%d) is greater than the default recv buffer size(%d)!", res_len, ONENET_RECV_RESP_LEN);
+        goto __exit;
+    }
+    else if (webclient_read(session, rec_buf, ONENET_RECV_RESP_LEN) > 0)
     {
         if (response_get_datastreams_handlers(rec_buf, datastream) < 0)
         {
