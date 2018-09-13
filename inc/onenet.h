@@ -29,7 +29,7 @@
 
 #define ONENET_DEBUG                   1
 
-#define ONENET_SW_VERSION              "0.2.0"
+#define ONENET_SW_VERSION              "1.0.0"
 
 #ifndef ONENET_MALLOC
 #define ONENET_MALLOC                  rt_malloc

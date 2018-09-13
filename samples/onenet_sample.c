@@ -36,10 +36,14 @@ static void onenet_upload_entry(void *parameter)
     {
         value = rand() % 100;
 
-        if (onenet_http_upload_digit("temperature", value) < 0)
+        if (onenet_mqtt_upload_digit("temperature", value) < 0)
         {
             log_e("upload has an error, stop uploading");
             break;
+        }
+        else
+        {
+            log_d("buffer : {\"temperature\":%d}", value);
         }
 
         rt_thread_delay(rt_tick_from_millisecond(5 * 1000));
@@ -51,11 +55,11 @@ int onenet_upload_cycle(void)
     rt_thread_t tid;
 
     tid = rt_thread_create("onenet_send",
-            onenet_upload_entry,
-            RT_NULL,
-            2 * 1024,
-            RT_THREAD_PRIORITY_MAX / 3 - 1,
-            5);
+                           onenet_upload_entry,
+                           RT_NULL,
+                           2 * 1024,
+                           RT_THREAD_PRIORITY_MAX / 3 - 1,
+                           5);
     if (tid)
     {
         rt_thread_startup(tid);

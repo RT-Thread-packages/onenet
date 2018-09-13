@@ -542,7 +542,6 @@ rt_err_t onenet_mqtt_upload_bin(const char *ds_name, uint8_t *bin, size_t len)
     size_t length = 0;
     rt_err_t result = RT_EOK;
     uint8_t *send_buffer = RT_NULL;
-    uint8_t *send_p = RT_NULL;
 
     assert(ds_name);
     assert(bin);
