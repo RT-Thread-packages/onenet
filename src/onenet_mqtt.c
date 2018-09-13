@@ -348,7 +348,7 @@ __exit:
         ONENET_FREE(send_buffer);
     }
 
-    return 0;
+    return result;
 }
 
 static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
@@ -446,7 +446,7 @@ __exit:
         ONENET_FREE(send_buffer);
     }
 
-    return 0;
+    return result;
 }
 
 /**
