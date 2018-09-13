@@ -263,7 +263,7 @@ static rt_err_t response_register_handlers(const unsigned char *rec_buf, const s
 
     assert(rec_buf);
 
-    log_d("response is %.*s\n", length, rec_buf);
+    log_d("response is %.*s", length, rec_buf);
 
     root = cJSON_Parse((char *)rec_buf);
     if (!root)
