@@ -10,13 +10,15 @@
 
 账号注册登录成功后，点击**开发者中心**进入开发者中心界面；
 
-点击**创建产品**，输入产品基本参数，页面最下方设备接入协议选择 `MQTT` 协议，如下图所示：
+点击**创建产品**，输入产品基本参数，在设备接入协议一栏选择 `MQTT` 协议，如下图所示：
 
 ![onenet](figures/onenet.png)
 
 ![onenet_create_product](figures/onenet_create_product.png)
 
-产品创建成功之后，可以在开发者中心左侧**产品概况**中查看产品基础信息（如产品ID，接入协议，创建时间，产品 APIkey 等，后面有用）。
+产品创建成功之后，可以在开发者中心的**公开协议产品**中找到刚刚创建的产品，点击产品名，可以看到产品的基础信息（如产品ID，接入协议，创建时间，产品 APIkey 等，后面有用）：
+
+![onenet_product_info](figures/onenet_product_info.png)
 
 #### 接入设备
 
@@ -30,7 +32,7 @@
 
 #### 添加 APIkey
 
-接入设备之后，可以看到设备管理的界面多了一个设备，设备的右边有一些操作设备的按钮，点击查看详情按钮
+接入设备之后，可以看到设备列表的界面多了一个设备，设备的右边有一些操作设备的按钮，点击查看详情按钮
 
 ![onenet_info](figures/onenet_info.png)
 
@@ -38,7 +40,7 @@
 
 此设备的相关信息就都显示出来了，比如：设备 ID、鉴权信息、设备 APIkey，这些信息需要记下，在ENV配置时会用到。
 
-点击按钮添加 APIkey，APIKey 的名称一般和设备相关联，我们这里填入`test_APIKey`，关联设备写入我们刚刚创建的设备`test1`。 
+点击按钮添加 APIkey，APIKey 的名称一般和设备相关联，我们这里填入`test_APIKey`，关联设备默认为我们刚刚创建的设备`test1`。 
 
 ![onenet7](figures/onenet7.png)
 
@@ -112,11 +114,11 @@ msh />[D/ONENET] (onenet_upload_data:106) buffer : {"temperature":32}
 [D/ONENET] (onenet_upload_data:106) buffer : {"temperature":51}
 ```
 
-我们打开 OneNET 平台，在设备管理的界面点击数据流管理按钮进入数据流界面。
+我们打开 OneNET 平台，在设备列表界面选择刚添加的设备并进入数据流展示页面。
 
 ![onenet_datastream](figures/onenet_datastream.png)
 
-点击`temperature`数据流右边的小箭头显示数据流信息，我们就可以看到刚刚上传的数据了。
+点击`temperature`数据流左边的小箭头显示数据流信息，我们就可以看到刚刚上传的数据了。
 
 ![onenet_datapoints](figures/onenet_datapoints.jpg)
 
@@ -156,7 +158,7 @@ msh />onenet_mqtt_publish_string test 1
 msh />onenet_set_cmd_rsp
 ```
 
-我们点击设备管理界面的发送命令按钮。
+我们点击设备列表界面的下发命令按钮。
 
 ![onenet_cmd](figures/onenet_cmd.png)
 
