@@ -8,7 +8,7 @@ OneNET平台是一个基于物联网产业特点打造的生态环境，可以�
 
 ## 文件目录结构
 
-``` {.c}
+```c
 OneNET
 │   README.md                       // 软件包使用说明
 │   SConscript                      // RT-Thread 默认的构建脚本
