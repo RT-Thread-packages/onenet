@@ -18,7 +18,7 @@ OneNET 软件包是 RT-Thread 针对 OneNET 平台连接做的的适配，通过
 
 ### 1.1 目录结构
 
-``` {.c}
+```c
 OneNET
 │   README.md                       // 软件包使用说明
 │   SConscript                      // RT-Thread 默认的构建脚本
@@ -55,7 +55,7 @@ OneNET package  遵循 GUN GPL 许可，详见 `LICENSE` 文件。
 
 使用 `OneNET package` 需要在 RT-Thread 的包管理中选中它，具体路径如下：
 
-```{.c}
+```c
 RT-Thread online packages
     IoT - internet of things  --->
         IoT Cloud  --->
@@ -64,7 +64,7 @@ RT-Thread online packages
 
 进入 onenet 软件包的配置菜单按下图所示配置，里面的信息依据自己的产品和设备的**实际情况**填写
 
-```{.c}
+```c
 --- OneNET: China Mobile OneNet cloud SDK for RT-Thread                            
     [ ]   Enable OneNET sample                                                  
     [*]   Enable support MQTT protocol                                                 

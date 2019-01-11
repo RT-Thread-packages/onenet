@@ -28,8 +28,6 @@
 
 ![onenet_create_device](figures/onenet_create_device.png)
 
-
-
 #### 添加 APIkey
 
 接入设备之后，可以看到设备列表的界面多了一个设备，设备的右边有一些操作设备的按钮，点击查看详情按钮
@@ -46,9 +44,9 @@
 
 #### 开启 onenet 软件包
 
-打开 env 工具输入 menuconfig 按照下面的路径开启 onenet 软件包
+打开 Env 工具输入 menuconfig 按照下面的路径开启 onenet 软件包：
 
-```{.c}
+```c
 RT-Thread online packages
     IoT - internet of things  --->
         IoT Cloud  --->
@@ -57,7 +55,7 @@ RT-Thread online packages
 
 进入 onenet 软件包的配置菜单按下图所示配置，里面的信息依据自己的产品和设备的**实际情况**填写
 
-```{.c}
+```c
 --- OneNET: China Mobile OneNet cloud SDK for RT-Thread                            
     [ ]   Enable OneNET sample                                                  
     [*]   Enable support MQTT protocol                                                 
@@ -88,13 +86,13 @@ RT-Thread online packages
 
 ## 示例文件介绍 ##
 
-利用 ENV 生成工程后，我们可以在工程的 onenet 目录下看到`onenet_sample.c`文件，该文件是 **OneNET** 软件包的示例展示，主要是展示用户如何使用 **OneNET** 软件包上传数据和接收命令。
+利用 Env 生成工程后，我们可以在工程的 onenet 目录下看到`onenet_sample.c`文件，该文件是 **OneNET** 软件包的示例展示，主要是展示用户如何使用 **OneNET** 软件包上传数据和接收命令。
 
 ## 运行示例
 
 在使用 OneNET 软件包之前必须要先调用`onenet_mqtt_init`这个命令进行初始化，初始化完成后设备会自动连接 OneNET 平台。
 
-```{.c}
+```c
 msh />onenet_mqtt_init
 [D/ONENET] (mqtt_connect_callback:85) Enter mqtt_connect_callback!
 [D/[MQTT] ] ipv4 address port: 6002
@@ -108,7 +106,7 @@ msh />[I/[MQTT] ] MQTT server connect success
 
 初始化完成后，用户可以调用`onenet_upload_cycle`这个命令周期性的往云平台上传数据。输入这个命令后，设备会每隔 5s 向数据流 temperature 上传一个随机值。并将上传的数据打印到 shell 窗口。
 
-```{.c}
+```c
 msh />onenet_upload_cycle
 msh />[D/ONENET] (onenet_upload_data:106) buffer : {"temperature":32}
 [D/ONENET] (onenet_upload_data:106) buffer : {"temperature":51}
@@ -127,9 +125,9 @@ msh />[D/ONENET] (onenet_upload_data:106) buffer : {"temperature":32}
 > onenet_mqtt_publish_digit
 > onenet_mqtt_publish_string
 
-命令格式如下所示
+命令格式如下所示：
 
-```{.c}
+```c
 onenet_mqtt_publish_digit 数据流名称 要上传的数据
 
 onenet_mqtt_publish_string 数据流名称 要上传的字符串
@@ -137,9 +135,9 @@ onenet_mqtt_publish_string 数据流名称 要上传的字符串
 
 输入命令后没有返回错误信息就表示上传成功。
 
-示例如下
+示例如下:
 
-```{.c}
+```c
 msh />onenet_mqtt_publish_digit test 1
 msh />onenet_mqtt_publish_string test 1
 msh />onenet_mqtt_publish_digit test 2
@@ -154,7 +152,7 @@ msh />onenet_mqtt_publish_string test 1
 
 在初始化时，命令响应回调函数默认指向了空，想要接收命令，必须设置命令响应回调函数，在 shell 中输入命令`onenet_set_cmd_rsp`,就把示例文件里的命令响应回调函数挂载上了，这个响应函数在接收到命令后会把命令打印出来。
 
-```{.c}
+```c
 msh />onenet_set_cmd_rsp
 ```
 
@@ -168,11 +166,10 @@ msh />onenet_set_cmd_rsp
 
 就可以在 shell 中看到云平台下发的命令了。
 
-```{.c}
+```c
 msh />onenet_set_cmd_rsp
 msh />[D/ONENET] (mqtt_callback:60) topic $creq/6db0c1b2-9a7e-5e4a-8897-bf62d4a3461f 
 receive a message
 [D/ONENET] (mqtt_callback:62) message length is 18
 [D/ONENET] (onenet_cmd_rsp_cb:107) recv data is hello rt-thread！
 ```
-
