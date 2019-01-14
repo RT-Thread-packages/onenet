@@ -14,7 +14,7 @@ OneNET 软件包是 RT-Thread 针对 OneNET 平台连接做的的适配，通过
 - 自定义 topic 和 topic 对应的回调函数
 - 上传二进制数据
 
-更多介绍请查看[详细介绍](.\docs\introduction.md)
+更多介绍请查看[详细介绍](./docs/introduction.md)
 
 ### 1.1 目录结构
 
