@@ -55,7 +55,7 @@
     {                                                                                                   \
         if (webclient_header_fields_add(session, fmt, ##__VA_ARGS__) < 0)                               \
         {                                                                                               \
-            LOG_E("webclient add header failed!");                                                      \
+            log_e("webclient add header failed!");                                                      \
             goto __exit;                                                                                \
         }                                                                                               \
     } while(0);                                                                                         \
