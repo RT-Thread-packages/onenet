@@ -24,9 +24,20 @@
 
 #include <onenet.h>
 
+#define DBG_ENABLE
+#define DBG_COLOR
+#define DBG_SECTION_NAME    "onenet.port"
+#if ONENET_DEBUG
+#define DBG_LEVEL           DBG_LOG
+#else
+#define DBG_LEVEL           DBG_INFO
+#endif /* ONENET_DEBUG */
+
+#include <rtdbg.h>
+
 int onenet_port_data_process(char *recv_data, rt_size_t size)
 {
-    log_d("Recv data : %.*s", size, recv_data);
+    LOG_D("Recv data : %.*s", size, recv_data);
 
     return 0;
 }

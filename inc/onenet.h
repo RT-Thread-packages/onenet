@@ -43,49 +43,6 @@
 #define ONENET_FREE                    rt_free
 #endif
 
-/* error level log */
-#ifdef  log_e
-#undef  log_e
-#endif
-#define log_e(...)                     rt_kprintf("\033[31;22m[E/ONENET] (%s:%d) ", __FUNCTION__, __LINE__);rt_kprintf(__VA_ARGS__);rt_kprintf("\033[0m\n")
-
-/* info level log */
-#ifdef  log_i
-#undef  log_i
-#endif
-#define log_i(...)                     rt_kprintf("\033[36;22m[I/ONENET] ");                                rt_kprintf(__VA_ARGS__);rt_kprintf("\033[0m\n")
-
-#if ONENET_DEBUG
-#ifdef assert
-#undef assert
-#endif
-#define assert(EXPR)                                                           \
-if (!(EXPR))                                                                   \
-{                                                                              \
-    rt_kprintf("(%s) has assert failed at %s.\n", #EXPR, __FUNCTION__);        \
-    while (1);                                                                 \
-}
-
-/* debug level log */
-#ifdef  log_d
-#undef  log_d
-#endif
-#define log_d(...)                     rt_kprintf("[D/ONENET] (%s:%d) ", __FUNCTION__, __LINE__);           rt_kprintf(__VA_ARGS__);rt_kprintf("\n")
-
-#else
-
-#ifdef assert
-#undef assert
-#endif
-#define assert(EXPR)                   ((void)0);
-
-/* debug level log */
-#ifdef  log_d
-#undef  log_d
-#endif
-#define log_d(...)
-#endif /* ONENET_DEBUG */
-
 #ifndef ONENET_MQTT_SUBTOPIC
 #define ONENET_MQTT_SUBTOPIC           "/topic_test"
 #endif

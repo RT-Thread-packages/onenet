@@ -30,6 +30,18 @@
 
 #include <onenet.h>
 
+#define DBG_ENABLE
+#define DBG_COLOR
+#define DBG_SECTION_NAME    "onenet.mqtt"
+#if ONENET_DEBUG
+#define DBG_LEVEL           DBG_LOG
+#else
+#define DBG_LEVEL           DBG_INFO
+#endif /* ONENET_DEBUG */
+
+#include <rtdbg.h>
+
+
 #ifdef RT_USING_DFS
 #include <dfs_posix.h>
 #endif
@@ -57,9 +69,9 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
     assert(c);
     assert(msg_data);
 
-    log_d("topic %.*s receive a message", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
+    LOG_D("topic %.*s receive a message", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
 
-    log_d("message length is %d", msg_data->message->payloadlen);
+    LOG_D("message length is %d", msg_data->message->payloadlen);
 
     if (onenet_mqtt.cmd_rsp_cb != RT_NULL)
     {
@@ -82,17 +94,17 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
 
 static void mqtt_connect_callback(MQTTClient *c)
 {
-    log_d("Enter mqtt_connect_callback!");
+    LOG_D("Enter mqtt_connect_callback!");
 }
 
 static void mqtt_online_callback(MQTTClient *c)
 {
-    log_d("Enter mqtt_online_callback!");
+    LOG_D("Enter mqtt_online_callback!");
 }
 
 static void mqtt_offline_callback(MQTTClient *c)
 {
-    log_d("Enter mqtt_offline_callback!");
+    LOG_D("Enter mqtt_offline_callback!");
 }
 
 static rt_err_t onenet_mqtt_entry(void)
@@ -112,7 +124,7 @@ static rt_err_t onenet_mqtt_entry(void)
     mq_client.readbuf = (unsigned char *) ONENET_CALLOC(1, mq_client.readbuf_size);
     if (!(mq_client.buf && mq_client.readbuf))
     {
-        log_e("No memory for MQTT client buffer!");
+        LOG_E("No memory for MQTT client buffer!");
         return -RT_ENOMEM;
     }
 
@@ -140,20 +152,20 @@ static rt_err_t onenet_get_info(void)
     {
         if (onenet_port_get_register_info(name, auth_info) < 0)
         {
-            log_e("onenet get register info fail!");
+            LOG_E("onenet get register info fail!");
             return -RT_ERROR;
         }
 
         if (onenet_http_register_device(name, auth_info) < 0)
         {
-            log_e("onenet register device fail! name is %s,auth info is %s", name, auth_info);
+            LOG_E("onenet register device fail! name is %s,auth info is %s", name, auth_info);
             return -RT_ERROR;
         }
     }
 
     if (onenet_port_get_device_info(dev_id, api_key, auth_info))
     {
-        log_e("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s", dev_id, api_key, auth_info);
+        LOG_E("onenet get device id fail,dev_id is %s,api_key is %s,auth_info is %s", dev_id, api_key, auth_info);
         return -RT_ERROR;
     }
 
@@ -192,7 +204,7 @@ int onenet_mqtt_init(void)
 
     if (init_ok)
     {
-        log_d("onenet mqtt already init!");
+        LOG_D("onenet mqtt already init!");
         return 0;
     }
 
@@ -214,12 +226,12 @@ int onenet_mqtt_init(void)
 __exit:
     if (!result)
     {
-        log_i("RT-Thread OneNET package(V%s) initialize success.", ONENET_SW_VERSION);
+        LOG_I("RT-Thread OneNET package(V%s) initialize success.", ONENET_SW_VERSION);
         init_ok = RT_TRUE;
     }
     else
     {
-        log_e("RT-Thread OneNET package(V%s) initialize failed(%d).", ONENET_SW_VERSION, result);
+        LOG_E("RT-Thread OneNET package(V%s) initialize failed(%d).", ONENET_SW_VERSION, result);
     }
 
     return result;
@@ -268,7 +280,7 @@ static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double dig
     root = cJSON_CreateObject();
     if (!root)
     {
-        log_e("MQTT publish digit data failed! cJSON create object error return NULL!");
+        LOG_E("MQTT publish digit data failed! cJSON create object error return NULL!");
         return -RT_ENOMEM;
     }
 
@@ -278,7 +290,7 @@ static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double dig
     msg_str = cJSON_PrintUnformatted(root);
     if (!msg_str)
     {
-        log_e("MQTT publish digit data failed! cJSON print unformatted error return NULL!");
+        LOG_E("MQTT publish digit data failed! cJSON print unformatted error return NULL!");
         result = -RT_ENOMEM;
         goto __exit;
     }
@@ -286,7 +298,7 @@ static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double dig
     *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
     if (!(*out_buff))
     {
-        log_e("ONENET mqtt upload digit data failed! No memory for send buffer!");
+        LOG_E("ONENET mqtt upload digit data failed! No memory for send buffer!");
         return -RT_ENOMEM;
     }
 
@@ -338,7 +350,7 @@ rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit)
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet publish failed!");
+        LOG_E("onenet publish failed (%d)!", result);
         goto __exit;
     }
 
@@ -365,7 +377,7 @@ static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str
     root = cJSON_CreateObject();
     if (!root)
     {
-        log_e("MQTT publish string data failed! cJSON create object error return NULL!");
+        LOG_E("MQTT publish string data failed! cJSON create object error return NULL!");
         return -RT_ENOMEM;
     }
 
@@ -375,7 +387,7 @@ static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str
     msg_str = cJSON_PrintUnformatted(root);
     if (!msg_str)
     {
-        log_e("MQTT publish string data failed! cJSON print unformatted error return NULL!");
+        LOG_E("MQTT publish string data failed! cJSON print unformatted error return NULL!");
         result = -RT_ENOMEM;
         goto __exit;
     }
@@ -383,7 +395,7 @@ static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str
     *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
     if (!(*out_buff))
     {
-        log_e("ONENET mqtt upload string data failed! No memory for send buffer!");
+        LOG_E("ONENET mqtt upload string data failed! No memory for send buffer!");
         return -RT_ENOMEM;
     }
 
@@ -436,7 +448,7 @@ rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, (uint8_t *)send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet mqtt publish digit data failed!");
+        LOG_E("onenet mqtt publish digit data failed!");
         goto __exit;
     }
 
@@ -478,7 +490,7 @@ static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, in
     root = cJSON_CreateObject();
     if (!root)
     {
-        log_e("MQTT online push failed! cJSON create object error return NULL!");
+        LOG_E("MQTT online push failed! cJSON create object error return NULL!");
         return -RT_ENOMEM;
     }
 
@@ -488,7 +500,7 @@ static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, in
     msg_str = cJSON_PrintUnformatted(root);
     if (!msg_str)
     {
-        log_e("Device online push failed! cJSON print unformatted error return NULL!");
+        LOG_E("Device online push failed! cJSON print unformatted error return NULL!");
         result = -RT_ENOMEM;
         goto __exit;
     }
@@ -556,7 +568,7 @@ rt_err_t onenet_mqtt_upload_bin(const char *ds_name, uint8_t *bin, size_t len)
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet publish data failed(%d)!", result);
+        LOG_E("onenet publish data failed(%d)!", result);
         result = -RT_ERROR;
         goto __exit;
     }
@@ -595,7 +607,7 @@ rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_pat
 
     if (stat(bin_path, &file_stat) < 0)
     {
-        log_e("get file state fail!, bin path is %s",bin_path);
+        LOG_E("get file state fail!, bin path is %s",bin_path);
         return -RT_ERROR;
     }
     else
@@ -603,7 +615,7 @@ rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_pat
         bin_len = file_stat.st_size;
         if (bin_len > 3 * 1024 * 1024)
         {
-            log_e("bin length must be less than 3M, %s length is %d", bin_path, bin_len);
+            LOG_E("bin length must be less than 3M, %s length is %d", bin_path, bin_len);
             return -RT_ERROR;
         }
 
@@ -618,14 +630,14 @@ rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_pat
         close(fd);
         if (bin_size <= 0)
         {
-            log_e("read %s file fail!", bin_path);
+            LOG_E("read %s file fail!", bin_path);
             result = -RT_ERROR;
             goto __exit;
         }
     }
     else
     {
-        log_e("open %s file fail!", bin_path);
+        LOG_E("open %s file fail!", bin_path);
         return -RT_ERROR;
     }
 
@@ -639,7 +651,7 @@ rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_pat
     result = onenet_mqtt_publish(ONENET_TOPIC_DP, send_buffer, length);
     if (result < 0)
     {
-        log_e("onenet publish %s data failed(%d)!", bin_path, result);
+        LOG_E("onenet publish %s data failed(%d)!", bin_path, result);
         result = -RT_ERROR;
         goto __exit;
     }

@@ -24,6 +24,17 @@
 
 #include <onenet.h>
 
+#define DBG_ENABLE
+#define DBG_COLOR
+#define DBG_SECTION_NAME    "onenet.sample"
+#if ONENET_DEBUG
+#define DBG_LEVEL           DBG_LOG
+#else
+#define DBG_LEVEL           DBG_INFO
+#endif /* ONENET_DEBUG */
+
+#include <rtdbg.h>
+
 #ifdef FINSH_USING_MSH
 #include <finsh.h>
 
@@ -38,12 +49,12 @@ static void onenet_upload_entry(void *parameter)
 
         if (onenet_mqtt_upload_digit("temperature", value) < 0)
         {
-            log_e("upload has an error, stop uploading");
+            LOG_E("upload has an error, stop uploading");
             break;
         }
         else
         {
-            log_d("buffer : {\"temperature\":%d}", value);
+            LOG_D("buffer : {\"temperature\":%d}", value);
         }
 
         rt_thread_delay(rt_tick_from_millisecond(5 * 1000));
@@ -73,13 +84,13 @@ int onenet_publish_digit(int argc, char **argv)
 {
     if (argc != 3)
     {
-        log_e("onenet_publish [datastream_id]  [value]  - mqtt pulish digit data to OneNET.");
+        LOG_E("onenet_publish [datastream_id]  [value]  - mqtt pulish digit data to OneNET.");
         return -1;
     }
 
     if (onenet_mqtt_upload_digit(argv[1], atoi(argv[2])) < 0)
     {
-        log_e("upload digit data has an error!\n");
+        LOG_E("upload digit data has an error!\n");
     }
 
     return 0;
@@ -90,13 +101,13 @@ int onenet_publish_string(int argc, char **argv)
 {
     if (argc != 3)
     {
-        log_e("onenet_publish [datastream_id]  [string]  - mqtt pulish string data to OneNET.");
+        LOG_E("onenet_publish [datastream_id]  [string]  - mqtt pulish string data to OneNET.");
         return -1;
     }
 
     if (onenet_mqtt_upload_string(argv[1], argv[2]) < 0)
     {
-        log_e("upload string has an error!\n");
+        LOG_E("upload string has an error!\n");
     }
 
     return 0;
@@ -108,7 +119,7 @@ static void onenet_cmd_rsp_cb(uint8_t *recv_data, size_t recv_size, uint8_t **re
 {
     char res_buf[] = { "cmd is received!\n" };
 
-    log_d("recv data is %.*s\n", recv_size, recv_data);
+    LOG_D("recv data is %.*s\n", recv_size, recv_data);
 
     /* user have to malloc memory for response data */
     *resp_data = (uint8_t *) ONENET_MALLOC(strlen(res_buf));
