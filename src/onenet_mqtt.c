@@ -66,8 +66,8 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
     uint8_t *response_buf = RT_NULL;
     char topicname[45] = { "$crsp/" };
 
-    assert(c);
-    assert(msg_data);
+    RT_ASSERT(c);
+    RT_ASSERT(msg_data);
 
     LOG_D("topic %.*s receive a message", msg_data->topicName->lenstring.len, msg_data->topicName->lenstring.data);
 
@@ -251,8 +251,8 @@ rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
 {
     MQTTMessage message;
 
-    assert(topic);
-    assert(msg);
+    RT_ASSERT(topic);
+    RT_ASSERT(msg);
 
     message.qos = QOS1;
     message.retained = 0;
@@ -273,9 +273,9 @@ static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double dig
     cJSON *root = RT_NULL;
     char *msg_str = RT_NULL;
 
-    assert(ds_name);
-    assert(out_buff);
-    assert(length);
+    RT_ASSERT(ds_name);
+    RT_ASSERT(out_buff);
+    RT_ASSERT(length);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -339,7 +339,7 @@ rt_err_t onenet_mqtt_upload_digit(const char *ds_name, const double digit)
     rt_err_t result = RT_EOK;
     size_t length = 0;
 
-    assert(ds_name);
+    RT_ASSERT(ds_name);
 
     result = onenet_mqtt_get_digit_data(ds_name, digit, &send_buffer, &length);
     if (result < 0)
@@ -369,10 +369,10 @@ static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str
     cJSON *root = RT_NULL;
     char *msg_str = RT_NULL;
 
-    assert(ds_name);
-    assert(str);
-    assert(out_buff);
-    assert(length);
+    RT_ASSERT(ds_name);
+    RT_ASSERT(str);
+    RT_ASSERT(out_buff);
+    RT_ASSERT(length);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -436,8 +436,8 @@ rt_err_t onenet_mqtt_upload_string(const char *ds_name, const char *str)
     rt_err_t result = RT_EOK;
     size_t length = 0;
 
-    assert(ds_name);
-    assert(str);
+    RT_ASSERT(ds_name);
+    RT_ASSERT(str);
 
     result = onenet_mqtt_get_string_data(ds_name, str, &send_buffer, &length);
     if (result < 0)
@@ -482,10 +482,10 @@ static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, in
     cJSON *root = RT_NULL;
     char *msg_str = RT_NULL;
 
-    assert(str);
-    assert(bin);
-    assert(out_buff);
-    assert(length);
+    RT_ASSERT(str);
+    RT_ASSERT(bin);
+    RT_ASSERT(out_buff);
+    RT_ASSERT(length);
 
     root = cJSON_CreateObject();
     if (!root)
@@ -555,8 +555,8 @@ rt_err_t onenet_mqtt_upload_bin(const char *ds_name, uint8_t *bin, size_t len)
     rt_err_t result = RT_EOK;
     uint8_t *send_buffer = RT_NULL;
 
-    assert(ds_name);
-    assert(bin);
+    RT_ASSERT(ds_name);
+    RT_ASSERT(bin);
 
     result = onenet_mqtt_get_bin_data(ds_name, bin, len, &send_buffer, &length);
     if (result < 0)
@@ -602,8 +602,8 @@ rt_err_t onenet_mqtt_upload_bin_by_path(const char *ds_name, const char *bin_pat
     uint8_t *send_buffer = RT_NULL;
     uint8_t * bin_array = RT_NULL;
 
-    assert(ds_name);
-    assert(bin_path);
+    RT_ASSERT(ds_name);
+    RT_ASSERT(bin_path);
 
     if (stat(bin_path, &file_stat) < 0)
     {
