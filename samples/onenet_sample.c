@@ -124,7 +124,7 @@ static void onenet_cmd_rsp_cb(uint8_t *recv_data, size_t recv_size, uint8_t **re
     /* user have to malloc memory for response data */
     *resp_data = (uint8_t *) ONENET_MALLOC(strlen(res_buf));
 
-    strncpy(*resp_data, res_buf, strlen(res_buf));
+    strncpy((char *)*resp_data, res_buf, strlen(res_buf));
 
     *resp_size = strlen(res_buf);
 }
@@ -133,6 +133,7 @@ static void onenet_cmd_rsp_cb(uint8_t *recv_data, size_t recv_size, uint8_t **re
 int onenet_set_cmd_rsp(int argc, char **argv)
 {
     onenet_set_cmd_rsp_cb(onenet_cmd_rsp_cb);
+    return 0;
 }
 MSH_CMD_EXPORT(onenet_set_cmd_rsp, set cmd response function);
 
