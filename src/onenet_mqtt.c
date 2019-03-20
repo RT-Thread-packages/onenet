@@ -82,7 +82,7 @@ static void mqtt_callback(MQTTClient *c, MessageData *msg_data)
         {
             strncat(topicname, &(msg_data->topicName->lenstring.data[6]), msg_data->topicName->lenstring.len - 6);
 
-            onenet_mqtt_publish(topicname, response_buf, strlen(response_buf));
+            onenet_mqtt_publish(topicname, response_buf, strlen((const char *)response_buf));
 
             ONENET_FREE(response_buf);
 
@@ -145,9 +145,10 @@ static rt_err_t onenet_get_info(void)
     char dev_id[ONENET_INFO_DEVID_LEN] = { 0 };
     char api_key[ONENET_INFO_APIKEY_LEN] = { 0 };
     char auth_info[ONENET_INFO_AUTH_LEN] = { 0 };
-    char name[ONENET_INFO_NAME_LEN] = { 0 };
 
 #ifdef ONENET_USING_AUTO_REGISTER
+    char name[ONENET_INFO_NAME_LEN] = { 0 };
+    
     if (!onenet_port_is_registed())
     {
         if (onenet_port_get_register_info(name, auth_info) < 0)
@@ -508,8 +509,8 @@ static rt_err_t onenet_mqtt_get_bin_data(const char *str, const uint8_t *bin, in
     /* size = header(3) + json + binary length(4) + binary length +'\0' */
     *out_buff = (uint8_t *) ONENET_MALLOC(strlen(msg_str) + 3 + 4 + binlen + 1);
 
-    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
-    *length = strlen(&(*out_buff)[3]);
+    strncpy((char *)&(*out_buff)[3], msg_str, strlen(msg_str));
+    *length = strlen((const char *)&(*out_buff)[3]);
 
     /* mqtt head and cjson length */
     (*out_buff)[0] = 0x02;
