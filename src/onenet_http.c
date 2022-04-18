@@ -60,7 +60,7 @@
             goto __exit;                                                                                \
         }                                                                                               \
     } while(0);                                                                                         \
- 
+
 extern struct rt_onenet_info onenet_info;
 
 static rt_err_t onenet_upload_data(char *send_buffer)
@@ -93,7 +93,7 @@ static rt_err_t onenet_upload_data(char *send_buffer)
     WEBCLIENT_HEADER_ADD(session, "Content-Length: %d\r\n", strlen(buffer));
     WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
-    if (webclient_post(session, URI, buffer) != 200)
+    if (webclient_post(session, URI, buffer, strlen(buffer)) != 200)
     {
         result = -RT_ERROR;
         goto __exit;
@@ -344,7 +344,7 @@ static rt_err_t onenet_upload_register_device(char *send_buffer)
     WEBCLIENT_HEADER_ADD(session, "Content-Length: %d\r\n", strlen(buffer));
     WEBCLIENT_HEADER_ADD(session, "Content-Type: application/octet-stream\r\n");
 
-    if (webclient_post(session, URI, buffer) != 200)
+    if (webclient_post(session, URI, buffer, strlen(buffer)) != 200)
     {
         result = -RT_ERROR;
         goto __exit;
@@ -815,7 +815,7 @@ rt_err_t onenet_http_get_datastream(const char *ds_name, struct rt_onenet_ds_inf
         result = -RT_ERROR;
         goto __exit;
     }
-    
+
     res_len = webclient_content_length_get(session);
 
     if (res_len > ONENET_HTTP_HEAD_LEN)
