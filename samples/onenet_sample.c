@@ -21,6 +21,7 @@
  * 2018-04-24     chenyong     first version
  */
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <onenet.h>
 
