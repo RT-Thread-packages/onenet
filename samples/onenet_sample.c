@@ -123,11 +123,11 @@ static void onenet_cmd_rsp_cb(uint8_t *recv_data, size_t recv_size, uint8_t **re
     LOG_D("recv data is %.*s\n", recv_size, recv_data);
 
     /* user have to malloc memory for response data */
-    *resp_data = (uint8_t *) ONENET_MALLOC(strlen(res_buf));
+    *resp_data = (uint8_t *) ONENET_MALLOC(rt_strlen(res_buf));
 
-    strncpy((char *)*resp_data, res_buf, strlen(res_buf));
+    rt_strncpy((char *)*resp_data, res_buf, rt_strlen(res_buf));
 
-    *resp_size = strlen(res_buf);
+    *resp_size = rt_strlen(res_buf);
 }
 
 /* set the onenet mqtt command response callback function */

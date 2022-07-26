@@ -1,13 +1,16 @@
 from building import *
 
 cwd = GetCurrentDir()
-src = Glob('src/onenet_http.c')
+src = []
 
 if GetDepend(['PKG_USING_ONENET_SAMPLE']):
-    src += Glob('samples/*.c')
+    src += Glob('samples/onenet_sample.c')
 
 if GetDepend(['ONENET_USING_MQTT']):
     src += Glob('src/onenet_mqtt.c')
+
+if GetDepend(['ONENET_USING_AUTO_REGISTER'] or ['ONENET_USING_HTTP']):
+    src += Glob('src/onenet_http.c')
 
 path = [cwd + '/inc']
 
