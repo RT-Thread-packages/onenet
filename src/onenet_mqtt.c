@@ -41,9 +41,18 @@
 
 #include <rtdbg.h>
 
-
+#if RTTHREAD_VERSION < 40100
 #ifdef RT_USING_DFS
 #include <dfs_posix.h>
+#endif
+#else
+#ifdef RT_USING_DFS
+#include <dfs_file.h>
+#include <unistd.h>
+#include <stdio.h>      /* rename() */
+#include <sys/stat.h>
+#include <sys/statfs.h> /* statfs() */
+#endif
 #endif
 
 #define  ONENET_TOPIC_DP    "$dp"
@@ -148,7 +157,7 @@ static rt_err_t onenet_get_info(void)
 
 #ifdef ONENET_USING_AUTO_REGISTER
     char name[ONENET_INFO_NAME_LEN] = { 0 };
-    
+
     if (!onenet_port_is_registed())
     {
         if (onenet_port_get_register_info(name, auth_info) < 0)
