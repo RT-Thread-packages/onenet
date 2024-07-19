@@ -190,14 +190,8 @@ static rt_err_t onenet_get_info(void)
 
 #else
     strncpy(dev_id, ONENET_INFO_DEVID, strlen(ONENET_INFO_DEVID));
-    strncpy(api_key, ONENET_INFO_APIKEY, strlen(ONENET_INFO_APIKEY));
     strncpy(auth_info, ONENET_INFO_AUTH, strlen(ONENET_INFO_AUTH));
 #endif
-
-    if (strlen(api_key) < 15)
-    {
-        strncpy(api_key, ONENET_MASTER_APIKEY, strlen(ONENET_MASTER_APIKEY));
-    }
 
     strncpy(onenet_info.device_id, dev_id, strlen(dev_id));
     strncpy(onenet_info.api_key, api_key, strlen(api_key));
@@ -286,64 +280,6 @@ rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
     return 0;
 }
 
-#if defined(ONENET_USING_LEGACY)
-static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double digit, char **out_buff, size_t *length)
-{
-    rt_err_t result = RT_EOK;
-    cJSON *root = RT_NULL;
-    char *msg_str = RT_NULL;
-
-    RT_ASSERT(ds_name);
-    RT_ASSERT(out_buff);
-    RT_ASSERT(length);
-
-    root = cJSON_CreateObject();
-    if (!root)
-    {
-        LOG_E("MQTT publish digit data failed! cJSON create object error return NULL!");
-        return -RT_ENOMEM;
-    }
-
-    cJSON_AddNumberToObject(root, ds_name, digit);
-
-    /* render a cJSON structure to buffer */
-    msg_str = cJSON_PrintUnformatted(root);
-    if (!msg_str)
-    {
-        LOG_E("MQTT publish digit data failed! cJSON print unformatted error return NULL!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
-
-    *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
-    if (!(*out_buff))
-    {
-        LOG_E("ONENET mqtt upload digit data failed! No memory for send buffer!");
-        return -RT_ENOMEM;
-    }
-
-    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
-    *length = strlen(&(*out_buff)[3]);
-
-    /* mqtt head and json length */
-    (*out_buff)[0] = 0x03;
-    (*out_buff)[1] = (*length & 0xff00) >> 8;
-    (*out_buff)[2] = *length & 0xff;
-    *length += 3;
-
-__exit:
-    if (root)
-    {
-        cJSON_Delete(root);
-    }
-    if (msg_str)
-    {
-        cJSON_free(msg_str);
-    }
-
-    return result;
-}
-#else
 static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double digit, char **out_buff, size_t *length)
 {
     rt_err_t result = RT_EOK;
@@ -409,7 +345,6 @@ __exit:
 
     return result;
 }
-#endif /* ONENET_USING_NEW_VERSION */
 
 /**
  * Upload digit data to OneNET cloud.
@@ -450,65 +385,6 @@ __exit:
     return result;
 }
 
-#if defined(ONENET_USING_LEGACY)
-static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
-{
-    rt_err_t result = RT_EOK;
-    cJSON *root = RT_NULL;
-    char *msg_str = RT_NULL;
-
-    RT_ASSERT(ds_name);
-    RT_ASSERT(str);
-    RT_ASSERT(out_buff);
-    RT_ASSERT(length);
-
-    root = cJSON_CreateObject();
-    if (!root)
-    {
-        LOG_E("MQTT publish string data failed! cJSON create object error return NULL!");
-        return -RT_ENOMEM;
-    }
-
-    cJSON_AddStringToObject(root, ds_name, str);
-
-    /* render a cJSON structure to buffer */
-    msg_str = cJSON_PrintUnformatted(root);
-    if (!msg_str)
-    {
-        LOG_E("MQTT publish string data failed! cJSON print unformatted error return NULL!");
-        result = -RT_ENOMEM;
-        goto __exit;
-    }
-
-    *out_buff = ONENET_MALLOC(strlen(msg_str) + 3);
-    if (!(*out_buff))
-    {
-        LOG_E("ONENET mqtt upload string data failed! No memory for send buffer!");
-        return -RT_ENOMEM;
-    }
-
-    strncpy(&(*out_buff)[3], msg_str, strlen(msg_str));
-    *length = strlen(&(*out_buff)[3]);
-
-    /* mqtt head and json length */
-    (*out_buff)[0] = 0x03;
-    (*out_buff)[1] = (*length & 0xff00) >> 8;
-    (*out_buff)[2] = *length & 0xff;
-    *length += 3;
-
-__exit:
-    if (root)
-    {
-        cJSON_Delete(root);
-    }
-    if (msg_str)
-    {
-        cJSON_free(msg_str);
-    }
-
-    return result;
-}
-#else
 static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
 {
     rt_err_t result = RT_EOK;
@@ -575,7 +451,6 @@ __exit:
 
     return result;
 }
-#endif /* ONENET_USING_LEGACY */
 
 /**
  * upload string data to OneNET cloud.
