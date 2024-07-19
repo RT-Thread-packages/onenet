@@ -55,7 +55,7 @@
 #endif
 #endif
 
-#define  ONENET_TOPIC_DP    "$dp"
+#define ONENET_TOPIC_DP "$sys/" ONENET_INFO_PROID "/" ONENET_INFO_DEVID "/thing/property/post"
 
 static rt_bool_t init_ok = RT_FALSE;
 static MQTTClient mq_client;
@@ -116,6 +116,11 @@ static void mqtt_offline_callback(MQTTClient *c)
     LOG_D("Enter mqtt_offline_callback!");
 }
 
+static void mqtt_usr_callback(MQTTClient *c)
+{
+    LOG_D("Enter mqtt_usr_callback!");
+}
+
 static rt_err_t onenet_mqtt_entry(void)
 {
     MQTTPacket_connectData condata = MQTTPacket_connectData_initializer;
@@ -143,6 +148,10 @@ static rt_err_t onenet_mqtt_entry(void)
     mq_client.offline_callback = mqtt_offline_callback;
 
     mq_client.defaultMessageHandler = mqtt_callback;
+
+    mq_client.messageHandlers[0].topicFilter = rt_strdup(ONENET_MQTT_SUBTOPIC);
+    mq_client.messageHandlers[0].callback = mqtt_usr_callback;
+    mq_client.messageHandlers[0].qos = QOS1;
 
     paho_mqtt_start(&mq_client);
 
@@ -264,7 +273,7 @@ rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
     RT_ASSERT(topic);
     RT_ASSERT(msg);
 
-    message.qos = QOS1;
+    message.qos = QOS0;
     message.retained = 0;
     message.payload = (void *) msg;
     message.payloadlen = len;
@@ -277,6 +286,7 @@ rt_err_t onenet_mqtt_publish(const char *topic, const uint8_t *msg, size_t len)
     return 0;
 }
 
+#if defined(ONENET_USING_LEGACY)
 static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double digit, char **out_buff, size_t *length)
 {
     rt_err_t result = RT_EOK;
@@ -333,6 +343,73 @@ __exit:
 
     return result;
 }
+#else
+static rt_err_t onenet_mqtt_get_digit_data(const char *ds_name, const double digit, char **out_buff, size_t *length)
+{
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    cJSON *params = RT_NULL;
+    cJSON *temp = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    RT_ASSERT(ds_name);
+    RT_ASSERT(out_buff);
+    RT_ASSERT(length);
+
+    root = cJSON_CreateObject();
+    params = cJSON_CreateObject();
+    temp = cJSON_CreateObject();
+
+    if (!root)
+    {
+        LOG_E("MQTT publish digit data failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    /*  add a key-value pair with the key "id" and a string value to the root object */
+    cJSON_AddItemToObject(root, "id", cJSON_CreateString("123"));
+
+    /*  add the params object to the root object with the key "params" */
+    cJSON_AddItemToObject(root, "params", params);
+
+    /*  add the temp object to the params object with the key ds_name */
+    cJSON_AddItemToObject(params, ds_name, temp);
+
+    /*  add a key-value pair with the key "value" and a digit value to the temp object */
+    cJSON_AddNumberToObject(temp, "value", digit);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        LOG_E("MQTT publish digit data failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    *out_buff = ONENET_MALLOC(strlen(msg_str));
+    if (!(*out_buff))
+    {
+        LOG_E("ONENET mqtt upload digit data failed! No memory for send buffer!");
+        return -RT_ENOMEM;
+    }
+
+    strncpy(&(*out_buff)[0], msg_str, strlen(msg_str));
+    *length = strlen(msg_str);
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        cJSON_free(msg_str);
+    }
+
+    return result;
+}
+#endif /* ONENET_USING_NEW_VERSION */
 
 /**
  * Upload digit data to OneNET cloud.
@@ -373,6 +450,7 @@ __exit:
     return result;
 }
 
+#if defined(ONENET_USING_LEGACY)
 static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
 {
     rt_err_t result = RT_EOK;
@@ -430,6 +508,74 @@ __exit:
 
     return result;
 }
+#else
+static rt_err_t onenet_mqtt_get_string_data(const char *ds_name, const char *str, char **out_buff, size_t *length)
+{
+    rt_err_t result = RT_EOK;
+    cJSON *root = RT_NULL;
+    cJSON *params = RT_NULL;
+    cJSON *temp = RT_NULL;
+    char *msg_str = RT_NULL;
+
+    RT_ASSERT(ds_name);
+    RT_ASSERT(str);
+    RT_ASSERT(out_buff);
+    RT_ASSERT(length);
+
+    root = cJSON_CreateObject();
+    params = cJSON_CreateObject();
+    temp = cJSON_CreateObject();
+
+    if (!root)
+    {
+        LOG_E("MQTT publish string data failed! cJSON create object error return NULL!");
+        return -RT_ENOMEM;
+    }
+
+    /*  add a key-value pair with the key "id" and a string value to the root object */
+    cJSON_AddItemToObject(root, "id", cJSON_CreateString("123"));
+
+    /*  add the params object to the root object with the key "params" */
+    cJSON_AddItemToObject(root, "params", params);
+
+    /*  add the temp object to the params object with the key ds_name */
+    cJSON_AddItemToObject(params, ds_name, temp);
+
+    /*  add a key-value pair with the key "value" and a digit value to the temp object */
+    cJSON_AddStringToObject(temp, "value", str);
+
+    /* render a cJSON structure to buffer */
+    msg_str = cJSON_PrintUnformatted(root);
+    if (!msg_str)
+    {
+        LOG_E("MQTT publish string data failed! cJSON print unformatted error return NULL!");
+        result = -RT_ENOMEM;
+        goto __exit;
+    }
+
+    *out_buff = ONENET_MALLOC(strlen(msg_str));
+    if (!(*out_buff))
+    {
+        LOG_E("ONENET mqtt upload string data failed! No memory for send buffer!");
+        return -RT_ENOMEM;
+    }
+
+    strncpy(&(*out_buff)[0], msg_str, strlen(msg_str));
+    *length = strlen(msg_str);
+
+__exit:
+    if (root)
+    {
+        cJSON_Delete(root);
+    }
+    if (msg_str)
+    {
+        cJSON_free(msg_str);
+    }
+
+    return result;
+}
+#endif /* ONENET_USING_LEGACY */
 
 /**
  * upload string data to OneNET cloud.

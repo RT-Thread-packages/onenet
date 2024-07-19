@@ -44,14 +44,14 @@
 #endif
 
 #ifndef ONENET_MQTT_SUBTOPIC
-#define ONENET_MQTT_SUBTOPIC           "/topic_test"
+#define ONENET_MQTT_SUBTOPIC           "$sys/" ONENET_INFO_PROID "/" ONENET_INFO_DEVID "/thing/property/set"
 #endif
 
-#define ONENET_SERVER_URL              "tcp://183.230.40.39:6002"
+#define ONENET_SERVER_URL              "tcp://183.230.40.96:1883"
 #define ONENET_INFO_DEVID_LEN          16
 #define ONENET_INFO_APIKEY_LEN         32
 #define ONENET_INFO_PROID_LEN          16
-#define ONENET_INFO_AUTH_LEN           64
+#define ONENET_INFO_AUTH_LEN           300
 #define ONENET_INFO_NAME_LEN           64
 #define ONENET_INFO_URL_LEN            32
 
